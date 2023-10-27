@@ -2,7 +2,7 @@
 
 ## What we want to implement (ideas)
 - [ ] Compare with "Classifier-Free Diffusion Guidance", https://arxiv.org/abs/2207.12598 (no official code, only reimplemented one, but they have MINST)
-- [ ] 
+- [x] ticked
 
 
 ## Information, grading from KTH
