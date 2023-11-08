@@ -3,6 +3,8 @@
 ## What we want to implement (ideas)
 - [ ] Compare with "Classifier-Free Diffusion Guidance", https://arxiv.org/abs/2207.12598 (no official code, only reimplemented one, but they have MINST e.g https://github.com/teapearce/conditional_diffusion_mnist)
 - [x] ticked
+- [ ] load pretrained diffusion model
+- [ ] load dataset
 
 
 ## Information, grading from KTH

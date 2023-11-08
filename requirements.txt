@@ -1,0 +1,8 @@
+Python==3.10
+matplotlib==3.8
+jupyter==1.0
+# todo: right formating
+# pytorch==2.0
+# torchvision==0.15
+# torchaudio==2.0
+# pytorch==2.1 torchvision==0.16 torchaudio==2.0 cpuonly -c pytorch
