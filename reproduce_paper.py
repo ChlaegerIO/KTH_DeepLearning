@@ -5,26 +5,13 @@ import torch.optim as optim
 import torchvision
 from torchvision.transforms import ToTensor
 from torchvision import datasets, transforms
-
 import numpy as np
 import matplotlib.pyplot as plt
 
+from adm_model_definition import create_adm_classifier
 
-# load CIFAR-10 dataset
-# transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))])
-# trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
-# trainloader = torch.utils.data.DataLoader(trainset, batch_size=4, shuffle=True, num_workers=2)
-# testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
-# testloader = torch.utils.data.DataLoader(testset, batch_size=4, shuffle=False, num_workers=2)
-
-# # plot some images
-# def imshow(img):
-#     img = img / 2 + 0.5 # unnormalize
-#     npimg = img.numpy()
-#     plt.imshow(np.transpose(npimg, (1,2,0)))
-#     plt.show()
-
-# imshow(trainloader.dataset.data[0])
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print('Using device:', device)
 
 
 # We take the column unconditional EDM-G++ model (page 21)
@@ -47,12 +34,32 @@ import matplotlib.pyplot as plt
     # ├── ...
 
 
-############################ Dataloader: Timo ############################
+############################ Discriminator: Timo ############################
 # load pretrained classifier model (ADM) --> fix weights
     # ${project_page}/DG/
     # ├── checkpoints
     # │   ├── ADM_classifier/32x32_classifier.pt
     # ├── ...
+
+# !!! für MNIST 28x28 Auflösung -->  !!!
+def load_classifier():
+    classifier_adm = create_adm_classifier(
+        image_size=32,
+        classifier_use_fp16=False,
+        classifier_width=128,
+        classifier_depth=4,
+        classifier_attention_resolutions="32,16,8",
+        classifier_use_scale_shift_norm=True,
+        classifier_resblock_updown=True,
+        classifier_pool="attention",
+    )
+    classifier_adm.load_state_dict(torch.load('./model/32x32_classifier_adm_pretrained.pt'), map_location=torch.device(device))     # does not work with 'cpu'
+    classifier_adm.eval()
+    return classifier_adm
+
+# test classifier
+classifier_model = load_classifier()
+print(classifier_model)
 
 
 # load pretrained discriminator model (U-Net?), or make a own one
@@ -62,6 +69,8 @@ import matplotlib.pyplot as plt
     # │   ├── cifar_cond/discriminator_250.pt
     # ├── ...
 
+def load_discriminator():
+    pass
 
 
 ############################ Next step ############################
