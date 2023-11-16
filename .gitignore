@@ -1,3 +1,4 @@
 .vscode
-32x32_classifier_adm_pretrained.pt
+*.pt
 /__pycache__
+*.pkl
