@@ -1,5 +1,5 @@
 import torch
-from adm_model_definition import EncoderUNetModel
+from externals.adm_model_definition import EncoderUNetModel
 
 def load_classifier(img_size, device):
     """
@@ -19,7 +19,7 @@ def load_classifier(img_size, device):
     )
     classifier_adm = create_encoder_unet(**classifier_args)
     classifier_adm.to(device)
-    classifier_adm.load_state_dict(torch.load('./model/32x32_classifier_adm_pretrained.pt'))
+    classifier_adm.load_state_dict(torch.load('./model/32x32_classifier.pt'))
     classifier_adm.eval()
     return classifier_adm
 

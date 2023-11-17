@@ -3,9 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torchinfo import summary
-import numpy as np
+# import numpy as np
+# import sys
 import pickle
-import torch_utils
 # import matplotlib.pyplot as plt
 
 from utils import load_classifier, load_discriminator
@@ -24,7 +24,7 @@ print('Using device:', DEVICE)
     # │   ├── pretrained_score/edm-cifar10-32x32-cond-vp.pkl
     # ├── ...
 print("Load pretrained diffusion score model...")
-with open('./model/diffusion_edm-cifar10-32x32-uncond-vp.pkl', 'rb') as f:
+with open('./model/edm-cifar10-32x32-uncond-vp.pkl', 'rb') as f:
     diffusion_model = pickle.load(f)['ema'].to(DEVICE)  # TODO: does not work yet?
 
 print("\nDiffusion model:", diffusion_model)
