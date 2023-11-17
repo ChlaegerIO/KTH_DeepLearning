@@ -2,29 +2,16 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-import torchvision
-from torchvision.transforms import ToTensor
-from torchvision import datasets, transforms
-
+from torchinfo import summary
 import numpy as np
-import matplotlib.pyplot as plt
+import pickle
+import torch_utils
+# import matplotlib.pyplot as plt
 
+from utils import load_classifier, load_discriminator
 
-# load CIFAR-10 dataset
-# transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))])
-# trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
-# trainloader = torch.utils.data.DataLoader(trainset, batch_size=4, shuffle=True, num_workers=2)
-# testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
-# testloader = torch.utils.data.DataLoader(testset, batch_size=4, shuffle=False, num_workers=2)
-
-# # plot some images
-# def imshow(img):
-#     img = img / 2 + 0.5 # unnormalize
-#     npimg = img.numpy()
-#     plt.imshow(np.transpose(npimg, (1,2,0)))
-#     plt.show()
-
-# imshow(trainloader.dataset.data[0])
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print('Using device:', DEVICE)
 
 
 # We take the column unconditional EDM-G++ model (page 21)
@@ -36,6 +23,11 @@ import matplotlib.pyplot as plt
     # │   ├── pretrained_score/edm-cifar10-32x32-uncond-vp.pkl
     # │   ├── pretrained_score/edm-cifar10-32x32-cond-vp.pkl
     # ├── ...
+print("Load pretrained diffusion score model...")
+with open('./model/diffusion_edm-cifar10-32x32-uncond-vp.pkl', 'rb') as f:
+    diffusion_model = pickle.load(f)['ema'].to(DEVICE)  # TODO: does not work yet?
+
+print("\nDiffusion model:", diffusion_model)
 
 # generate samples (conditional and unconditional) to check the model is working
 
@@ -47,21 +39,21 @@ import matplotlib.pyplot as plt
     # ├── ...
 
 
-############################ Dataloader: Timo ############################
-# load pretrained classifier model (ADM) --> fix weights
-    # ${project_page}/DG/
-    # ├── checkpoints
-    # │   ├── ADM_classifier/32x32_classifier.pt
-    # ├── ...
+############################ Discriminator: Timo ############################
+# load pretreined classifier
+classifier_model = load_classifier(img_size=32, device=DEVICE)
+print("\nClassifier:",classifier_model)
 
 
-# load pretrained discriminator model (U-Net?), or make a own one
-    # ${project_page}/DG/
-    # ├── checkpoints/discriminator
-    # │   ├── cifar_uncond/discriminator_60.pt
-    # │   ├── cifar_cond/discriminator_250.pt
-    # ├── ...
+# load pretrained or own discriminator
+discriminator_model = load_discriminator(model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True)
+print("\nDiscriminator:", discriminator_model)
 
+# test classifier/discriminator
+# Batch = 128
+# nbr_timesteps = torch.randn(Batch, device=DEVICE)   # optimal 1000
+# input = torch.randn(Batch,3,32,32, device=DEVICE)
+# summary(classifier_model, input_data=[input, nbr_timesteps])    # summary of model does not work, line 37: AttributeError: 'tuple' object has no attribute 'float'
 
 
 ############################ Next step ############################
