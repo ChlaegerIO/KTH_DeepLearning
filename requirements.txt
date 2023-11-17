@@ -6,3 +6,7 @@ jupyter==1.0
 # torchvision==0.15
 # torchaudio==2.0
 # pytorch==2.1 torchvision==0.16 torchaudio==2.0 cpuonly -c pytorch
+
+torch~=2.1.1
+torchvision~=0.16.1
+numpy~=1.23.5
