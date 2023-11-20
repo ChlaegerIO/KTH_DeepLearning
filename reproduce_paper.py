@@ -74,6 +74,7 @@ print("\nDiscriminator:", discriminator_model)
 # generator-quided sample generator to check the model is working
 
 
+
 # evaluation (FID, IS, etc.)
     # ${project_page}/DG/
     # ├── stats
