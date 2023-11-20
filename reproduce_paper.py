@@ -9,6 +9,7 @@ import pickle
 # import matplotlib.pyplot as plt
 
 from utils import load_classifier, load_discriminator
+from diffusion import sde_solver
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('Using device:', DEVICE)
@@ -31,7 +32,15 @@ print("\nDiffusion model:", diffusion_model)
 
 # generate samples (conditional and unconditional) to check the model is working
 
-# prepare real data (CIFAR-10, MINST later, simple toy 2-dimensional Case)
+noiseImage = torch.randn(1, 3, 32, 32, device=DEVICE)
+min_dis = 10e-5
+max_dis = 1 - min_dis
+t_mid = 0.01
+nfe = 35
+weight_DG = 2.0
+generated_image = sde_solver(noiseImage, min_dis, max_dis, t_mid, nfe, weight_DG)
+
+# prepare data loader (CIFAR-10, MINST later, simple toy 2-dimensional Case)
     # ${project_page}/DG/
     # ├── data
     # │   ├── true_data.npz

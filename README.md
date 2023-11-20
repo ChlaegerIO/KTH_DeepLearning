@@ -1,5 +1,10 @@
 # KTH_DeepLearning
 
+## Fragen an Betreuer
+- From where should we use the dataset? Official paper one or external CIFAR-10?
+- 
+
+
 ## Setup guide
 - Run environment.yml to create a conda environment with most necessary packages
 - 'pip install https://github.com/podgorskiy/dnnlib/releases/download/0.0.1/dnnlib-0.0.1-py3-none-any.whl'
