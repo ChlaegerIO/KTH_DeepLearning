@@ -9,7 +9,7 @@ import pickle
 # import matplotlib.pyplot as plt
 
 from utils import load_classifier, load_discriminator
-from diffusion import sde_solver
+from diffusion import Diffusion, Discriminator
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('Using device:', DEVICE)
@@ -24,21 +24,31 @@ print('Using device:', DEVICE)
     # │   ├── pretrained_score/edm-cifar10-32x32-uncond-vp.pkl
     # │   ├── pretrained_score/edm-cifar10-32x32-cond-vp.pkl
     # ├── ...
-print("Load pretrained diffusion score model...")
+print("Load pretrained diffusion score model, classifier and discriminator...")
 with open('./model/edm-cifar10-32x32-uncond-vp.pkl', 'rb') as f:
     diffusion_model = pickle.load(f)['ema'].to(DEVICE)  # TODO: does not work yet?
 
 print("\nDiffusion model:", diffusion_model)
 
-# generate samples (conditional and unconditional) to check the model is working
+# load pretreined classifier
+classifier_model = load_classifier(img_size=32, device=DEVICE)
+print("\nClassifier:",classifier_model)
+# freeze classifier parameters
+for param in classifier_model.parameters():
+    param.requires_grad = False
 
-noiseImage = torch.randn(1, 3, 32, 32, device=DEVICE)
-min_dis = 10e-5
-max_dis = 1 - min_dis
-t_mid = 0.01
-nfe = 35
-weight_DG = 2.0
-generated_image = sde_solver(noiseImage, min_dis, max_dis, t_mid, nfe, weight_DG)
+
+# load pretrained or own discriminator
+discriminator_model = load_discriminator(model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True)
+print("\nDiscriminator:", discriminator_model)
+
+    
+entire_dis_model = Discriminator(classifier_model, discriminator_model)
+
+# generate samples (conditional and unconditional) to check the model is working
+diffusion = Diffusion(T_nfe=35, min_dis=10e-5, max_dis=1-10e-5, img_size=32, weight_DG=2.0, device=DEVICE)
+diffusion.sample(diffusion_model, entire_dis_model)
+
 
 # prepare data loader (CIFAR-10, MINST later, simple toy 2-dimensional Case)
     # ${project_page}/DG/
@@ -49,14 +59,8 @@ generated_image = sde_solver(noiseImage, min_dis, max_dis, t_mid, nfe, weight_DG
 
 
 ############################ Discriminator: Timo ############################
-# load pretreined classifier
-classifier_model = load_classifier(img_size=32, device=DEVICE)
-print("\nClassifier:",classifier_model)
 
 
-# load pretrained or own discriminator
-discriminator_model = load_discriminator(model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True)
-print("\nDiscriminator:", discriminator_model)
 
 # test classifier/discriminator
 # Batch = 128

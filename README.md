@@ -2,7 +2,7 @@
 
 ## Fragen an Betreuer
 - From where should we use the dataset? Official paper one or external CIFAR-10?
-- 
+- For what does t_i hat stand for? And why not use t_i?
 
 
 ## Setup guide
