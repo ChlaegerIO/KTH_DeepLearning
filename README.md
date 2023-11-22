@@ -4,6 +4,8 @@
 - From where should we use the dataset? Official paper one or external CIFAR-10?
 - For what does t_i hat stand for? And why not use t_i?
 
+- Antwort: Code kann man vom Repo nehmen, aber eigene Ideen umsetzten, welche nicht im paper sind! Und das begründen, was man macht! Hyperparameter search über etwas was sie noch nicht gemacht haben! Neue Methode, Experimente!
+
 
 ## Setup guide
 - Run environment.yml to create a conda environment with most necessary packages
