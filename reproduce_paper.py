@@ -46,8 +46,12 @@ print("\nDiscriminator:", discriminator_model)
 entire_dis_model = Discriminator(classifier_model, discriminator_model)
 
 # generate samples (conditional and unconditional) to check the model is working
-diffusion = Diffusion(T_nfe=35, min_dis=10e-5, max_dis=1-10e-5, img_size=32, weight_DG=2.0, device=DEVICE)
-diffusion.sample(diffusion_model, entire_dis_model)
+x_latent = torch.randn(1, 3, 32, 32, device=DEVICE)
+time_min = 0.01 # [0,1]
+time_max = 1.0  # [0,1]
+boosting = True
+diffusion = Diffusion(diffusion_model, entire_dis_model, nbr_diff_steps=35, min_dis=10e-5, max_dis=1-10e-5, img_size=32, dg_weight_1order=2.0, dg_weight_2order=0, device=DEVICE)
+diffusion.sample(x_latent, boosting, time_min, time_max)
 
 
 # prepare data loader (CIFAR-10, MINST later, simple toy 2-dimensional Case)
@@ -84,22 +88,6 @@ diffusion.sample(diffusion_model, entire_dis_model)
     # ├── stats
     # │   ├── cifar10-32x32.npz
     # ├── ...
-
-############################ Dataloader: Vik ############################
-
-
-# SDE (Stochastic differential equation) layer
-    # correction term c
-    # g(t) --> volatility function
-    # f(x,t) --> drift function
-    # forward Euler method
-
-
-# helper functions
-    # - Euler, RK45 solver
-    # 
-
-
 
 
 
