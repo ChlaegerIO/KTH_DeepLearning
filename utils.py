@@ -1,5 +1,7 @@
+import os
 import torch
 from externals.adm_model_definition import EncoderUNetModel
+import params
 
 def load_classifier(img_size, device):
     """
@@ -19,11 +21,11 @@ def load_classifier(img_size, device):
     )
     classifier_adm = create_encoder_unet(**classifier_args)
     classifier_adm.to(device)
-    classifier_adm.load_state_dict(torch.load('./model/32x32_classifier.pt'))
+    classifier_adm.load_state_dict(torch.load(params.classifier_mPath))
     classifier_adm.eval()
     return classifier_adm
 
-def load_discriminator(model_type, in_size, in_channels, device, eval=False):
+def load_discriminator(model_type, in_size, in_channels, device, condition=None, eval=False):
     """
     Load pretrained discriminator model (U-Net?) for supported
     model_type: 'pretrained' or 'own'
@@ -39,12 +41,13 @@ def load_discriminator(model_type, in_size, in_channels, device, eval=False):
         classifier_pool="attention",
         out_channels=1,
         in_channels = in_channels,
+        condition=condition,
     )
     
     if model_type == 'pretrained':
         discriminator_model = create_encoder_unet(**discriminator_args)
         discriminator_model.to(device)
-        discriminator_model.load_state_dict(torch.load('./model/discriminator_60_uncond_pretrained.pt'))
+        discriminator_model.load_state_dict(torch.load(params.discriminator_mPath))
     elif model_type == 'own':
         discriminator_model = create_encoder_unet(**discriminator_args)
         discriminator_model.to(device)
@@ -67,6 +70,7 @@ def create_encoder_unet(
     classifier_pool,
     out_channels,
     in_channels = 3,
+    condition=None
     ):
     """
     Create a unet model with the given arguments.
@@ -99,4 +103,6 @@ def create_encoder_unet(
         use_scale_shift_norm=classifier_use_scale_shift_norm,
         resblock_updown=classifier_resblock_updown,
         pool=classifier_pool,
+        condition=condition,
     )
+

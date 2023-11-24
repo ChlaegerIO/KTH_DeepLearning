@@ -2,7 +2,7 @@
 
 ## Erkenntnisse / Ideen für Experimente
 - Bei Formel Seite 23 (paper) ist min und max vertauscht gegenüber t_steps im code, max - min macht für mich mehr Sinn!
-- 
+- Ensemble von mehreren Discriminator Modellen
 
 ## Fragen an Betreuer
 - From where should we use the dataset? Official paper one or external CIFAR-10?

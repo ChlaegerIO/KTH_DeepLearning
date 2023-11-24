@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 import numpy as np
+import params
 
 
 class Diffusion:
@@ -71,7 +72,7 @@ class Diffusion:
         # noise image
         x_next = x_latent * t_steps[0]
         # Sampling loop from x_T (i=0) to x_0 (i=N)
-        for i, (t_cur, t_next) in (enumerate(zip(t_steps[:-1], t_steps[1:]))):
+        for i, (t_cur, t_next) in enumerate(zip(t_steps[:-1], t_steps[1:])):
             x_cur = x_next
 
             # sample noise mean=0, std=S_noise
@@ -113,8 +114,11 @@ class Diffusion:
                     dg_correction_next, log_ratio = self.get_grad_log_ratio(x_next, t_next, time_min, time_max)
                     dg_correction_hat_next = self.dg_weight_2order * (dg_correction_next / t_next)
 
-                # Heun step
-                next_step = predicted_noise_hat_next + dg_correction_hat_next
+                    # Heun step
+                    next_step = predicted_noise_hat_next + dg_correction_hat_next
+                else:
+                    next_step = predicted_noise_hat_next
+
                 x_next = x_hat + (t_next - t_hat)[:,None,None,None] * 0.5 * (current_step + next_step)
 
         return x_next
@@ -123,7 +127,8 @@ class Diffusion:
         # normalize time embedding to right format
         mean_vp_tau, tau = self.transform_unnormalized_wve_to_normalized_vp(sigma_t_wve)
         if tau.min() > time_max or tau.min() < time_min:
-            raise ValueError(f'tau.min()={tau.min()} is out of range [{time_min}, {time_max}]')
+            print(f'tau.min()={tau.min()} is out of range [{time_min}, {time_max}]')
+            return torch.zeros_like(input), 10000000. * torch.ones(input.shape[0], device=input.device)
         if self.dg_model == None:
             raise ValueError(f'dg_model is None')
         
@@ -133,7 +138,7 @@ class Diffusion:
             tau = torch.ones(input_.shape[0], device=tau.device) * tau
 
             # compute gradient of log ratio
-            logits = self.dg_model(x_t, timesteps=tau)
+            logits = self.dg_model(x_t, timesteps=tau, condition=None)
             prediction = torch.clip(logits, 1e-5, 1. - 1e-5)
             log_ratio = torch.log(prediction / (1. - prediction))
 
@@ -162,12 +167,14 @@ class Diffusion:
 
 # combine classifier_model and discriminator_model to one model, where only discriminator_model is trained
 class Discriminator(nn.Module):
-    def __init__(self, classifier, discriminator):
+    def __init__(self, classifier, discriminator, enable_grad=True):
         super().__init__()
         self.classifier = classifier
         self.discriminator = discriminator
+        self.enable_grad = enable_grad
 
-    def forward(self, x, timesteps, sigmoid=True):
-        adm_features = self.classifier(x, timesteps=timesteps)
-        x = self.discriminator(adm_features, timesteps, sigmoid=sigmoid, condition=None).view(-1)
-        return x
+    def forward(self, x, timesteps=None, condition=None):
+        with torch.enable_grad() if self.enable_grad else torch.no_grad():
+            adm_features = self.classifier(x, timesteps=timesteps, feature=True)
+            prediction = self.discriminator(adm_features, timesteps, sigmoid=True, condition=condition).view(-1)
+        return prediction
