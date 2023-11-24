@@ -71,7 +71,7 @@ class Diffusion:
         # noise image
         x_next = x_latent * t_steps[0]
         # Sampling loop from x_T (i=0) to x_0 (i=N)
-        for i, (t_cur, t_next) in tqdm(enumerate(zip(t_steps[:-1], t_steps[1:]))):
+        for i, (t_cur, t_next) in (enumerate(zip(t_steps[:-1], t_steps[1:]))):
             x_cur = x_next
 
             # sample noise mean=0, std=S_noise
@@ -86,7 +86,7 @@ class Diffusion:
             t_hat = self.score_model.round_sigma(t_cur + gamma * t_cur)
 
             # Add step noise to image
-            x_hat = x_cur + torch.sqrt(t_hat**2 - t_cur**2)[:,None,None,None] * S_noise_[:,None,None,None] * torch.randn_like(x_cur)
+            x_hat = x_cur + (t_hat**2 - t_cur**2).sqrt()[:,None,None,None] * S_noise_[:,None,None,None] * torch.randn_like(x_cur)
 
             # Denoise prediction of diffusion model
             predicted_noise = self.score_model(x_hat, t_hat).to(torch.float64)
@@ -101,17 +101,17 @@ class Diffusion:
 
             # Euler step
             current_step = predicted_noise_hat + dg_correction_hat
-            x_next = x_hat + (t_next - t_hat)[:,None,None,None] * (current_step) 
+            x_next = x_hat + (t_next - t_hat)[:,None,None,None] * current_step
 
             if i < self.nbr_diff_steps - 1:
                 # Denoise next prediction of diffusion model
                 predicted_noise_next = self.score_model(x_next, t_next).to(torch.float64)
-                predicted_noise_hat_next = (x_next - predicted_noise_next) / t_next[:,None,None,None]
+                predicted_noise_hat_next = (x_next - predicted_noise_next) / t_next
                 # DG correction 2nd order
                 if self.dg_weight_2order != 0:
                     # DG correction 2nd order
                     dg_correction_next, log_ratio = self.get_grad_log_ratio(x_next, t_next, time_min, time_max)
-                    dg_correction_hat_next = self.dg_weight_2order * dg_correction_next / t_next[:,None,None,None]
+                    dg_correction_hat_next = self.dg_weight_2order * (dg_correction_next / t_next)
 
                 # Heun step
                 next_step = predicted_noise_hat_next + dg_correction_hat_next
@@ -128,8 +128,9 @@ class Diffusion:
             raise ValueError(f'dg_model is None')
         
         with torch.enable_grad(): # why?
-            x_t = mean_vp_tau[:,None,None,None] * input.float().detach().requires_grad_()
-            tau = torch.ones(input.shape[0], device=tau.device) * tau
+            input_ = mean_vp_tau[:,None,None,None] * input
+            x_t = input_.float().clone().detach().requires_grad_()
+            tau = torch.ones(input_.shape[0], device=tau.device) * tau
 
             # compute gradient of log ratio
             logits = self.dg_model(x_t, timesteps=tau)
@@ -137,7 +138,8 @@ class Diffusion:
             log_ratio = torch.log(prediction / (1. - prediction))
 
             # compute gradient of log ratio
-            dg_score = torch.autograd.grad(log_ratio.sum(), input)[0]
+            dg_score = torch.autograd.grad(log_ratio.sum(), x_t, retain_graph=False)[0]
+            dg_score *= -((sigma_t_wve[:,None,None,None] ** 2) * mean_vp_tau[:,None,None,None])
 
         return dg_score, log_ratio
     
@@ -167,5 +169,5 @@ class Discriminator(nn.Module):
 
     def forward(self, x, timesteps, sigmoid=True):
         adm_features = self.classifier(x, timesteps=timesteps)
-        x = self.discriminator(adm_features, timesteps, sigmoid=sigmoid).view(-1)
+        x = self.discriminator(adm_features, timesteps, sigmoid=sigmoid, condition=None).view(-1)
         return x

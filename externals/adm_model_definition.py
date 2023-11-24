@@ -118,8 +118,10 @@ def checkpoint(func, inputs, params, flag):
     """
     if flag:
         args = tuple(inputs) + tuple(params)
+        print("checkpoint: args", type(args))
         return CheckpointFunction.apply(func, len(inputs), *args)
     else:
+        print("checkpoint no flag: inputs", type(inputs))
         return func(*inputs)
     
 class CheckpointFunction(th.autograd.Function):
@@ -206,9 +208,12 @@ class TimestepEmbedSequential(nn.Sequential, TimestepBlock):
     def forward(self, x, emb):
         for layer in self:
             if isinstance(layer, TimestepBlock):
+                print("TimestepBlock: x, emb", type(x), type(emb))
                 x = layer(x, emb)
             else:
-                x = layer(x)
+                x = layer(x)                
+                print("No TimestepBlock, ab hier Tupel: x", type(x), layer)
+        print("TimestepEmbedSequential module", type(x))
         return x
 
 
@@ -375,6 +380,7 @@ class ResBlock(TimestepBlock):
             x = self.x_upd(x)
             h = in_conv(h)
         else:
+            print("self.in_layers(x): x", type(x))
             h = self.in_layers(x)
         emb_out = self.emb_layers(emb).type(h.dtype)
         while len(emb_out.shape) < len(h.shape):
@@ -387,6 +393,7 @@ class ResBlock(TimestepBlock):
         else:
             h = h + emb_out
             h = self.out_layers(h)
+        print("ResNet module", type(x), type(h), type(self.skip_connection(x)))
         return self.skip_connection(x) + h
 
 
@@ -436,6 +443,7 @@ class AttentionBlock(nn.Module):
         qkv = self.qkv(self.norm(x))
         h = self.attention(qkv)
         h = self.proj_out(h)
+        print("AttentionBlock module", type(x), type(h))
         return (x + h).reshape(b, c, *spatial)
 
 
@@ -788,12 +796,15 @@ class UNetModel(nn.Module):
         h = x.type(self.dtype)
         for module in self.input_blocks:
             h = module(h, emb)
+            print("input_blocks module", type(h))
             hs.append(h)
         h = self.middle_block(h, emb)
         for module in self.output_blocks:
             h = th.cat([h, hs.pop()], dim=1)
             h = module(h, emb)
+            print("output_blocks module", type(h))
         h = h.type(x.dtype)
+        print("UNetModel module", type(h))
         return self.out(h)
 
 
@@ -1015,6 +1026,7 @@ class EncoderUNetModel(nn.Module):
         results = []
         h = x.type(self.dtype)
         for module in self.input_blocks:
+            print("UNetModel h, emb: ", type(h), type(emb))
             h = module(h, emb)
             if self.pool.startswith("spatial"):
                 results.append(h.type(x.dtype).mean(dim=(2, 3)))
@@ -1022,7 +1034,9 @@ class EncoderUNetModel(nn.Module):
         if self.pool.startswith("spatial"):
             results.append(h.type(x.dtype).mean(dim=(2, 3)))
             h = th.cat(results, axis=-1)
+            print("UNet output: h", type(h), h.shape)
             return self.out(h)
         else:
             h = h.type(x.dtype)
+            print("UNet output: h", type(h), h.shape)
             return self.out(h)
