@@ -12,6 +12,7 @@ import PIL.Image
 # import matplotlib.pyplot as plt
 
 from utils import load_classifier, load_discriminator#, get_discriminator
+from unconditional_dataloader import get_dataloader
 from diffusion import Diffusion, Discriminator
 import params
 
@@ -44,21 +45,27 @@ entire_dis_model = Discriminator(classifier_model, discriminator_model, enable_g
 diffusion = Diffusion(diffusion_model, entire_dis_model, nbr_diff_steps=params.nbr_diff_steps, min_dis=params.min_dis, max_dis=params.max_dis, 
                     img_size=params.img_size, dg_weight_1order=params.dg_weight_1order, dg_weight_2order=params.dg_weight_2order, device=DEVICE)
 nbr_batches = params.nbr_samples // params.batch_size + 1
-os.makedirs(params.outdir_gen, exist_ok=True)
-for i in tqdm(range(nbr_batches)):
-    # sample from latent space (8, 3, 32, 32
-    x_latent = torch.randn(params.batch_size, diffusion_model.img_channels, diffusion_model.img_resolution, diffusion_model.img_resolution, device=DEVICE)
 
-    # generate samples images
-    images = diffusion.sample(x_latent, params.boosting, params.time_min, params.time_max)
+if params.task_generate_samples:
+    print("\nGenerate samples...")
+    os.makedirs(params.outdir_gen, exist_ok=True)
+    for i in tqdm(range(nbr_batches)):
+        # sample from latent space (8, 3, 32, 32
+        x_latent = torch.randn(params.batch_size, diffusion_model.img_channels, diffusion_model.img_resolution, diffusion_model.img_resolution, device=DEVICE)
 
-    # save generated samples images
-    images_np = (images * 127.5 + 128).clip(0, 255).to(torch.uint8).permute(0, 2, 3, 1).cpu().numpy()
-    count = 0
-    for image_np in images_np:
-        image_path = os.path.join(params.outdir_gen, f'{i*params.batch_size+count:06d}.png')
-        count += 1
-        PIL.Image.fromarray(image_np, 'RGB').save(image_path)
+        # generate samples images
+        images = diffusion.sample(x_latent, params.boosting, params.time_min, params.time_max)
+
+        # save generated samples images
+        images_np = (images * 127.5 + 128).clip(0, 255).to(torch.uint8).permute(0, 2, 3, 1).cpu().numpy()
+        count = 0
+        for image_np in images_np:
+            image_path = os.path.join(params.outdir_gen, f'{i*params.batch_size+count:06d}.png')
+            count += 1
+            PIL.Image.fromarray(image_np, 'RGB').save(image_path)
+
+            image_path = os.path.join(params.outdir_gen, f'{i*params.batch_size+count:06d}.npy')
+            np.savez_compressed(image_path, samples=images_np)
 
 
 
@@ -68,9 +75,6 @@ for i in tqdm(range(nbr_batches)):
     # │   ├── true_data.npz
     # │   ├── true_data_label.npz
     # ├── ...
-
-
-############################ Discriminator: Timo ############################
 
 
 
@@ -84,6 +88,14 @@ for i in tqdm(range(nbr_batches)):
 ############################ Next step ############################
 
 # train the discriminator (conditional and unconditional) for discriminator guiding
+if params.task_train_discriminator:
+    print("\nTrain discriminator...")
+    
+    # load data
+    train_dataloader, val_dataloader, test_dataloader = get_dataloader()
+
+    # train discriminator
+
 
 
 
