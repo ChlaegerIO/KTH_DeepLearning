@@ -1,3 +1,4 @@
+# library imports
 import os
 import torch
 import torch.nn as nn
@@ -5,12 +6,12 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torchinfo import summary
 import numpy as np
-# import sys
 import pickle
 from tqdm import tqdm
 import PIL.Image
 # import matplotlib.pyplot as plt
 
+# own files imports
 from utils import load_classifier, load_discriminator#, get_discriminator
 from unconditional_dataloader import get_dataloader
 from diffusion import Diffusion, Discriminator
@@ -61,13 +62,13 @@ if params.task_generate_samples:
         count = 0
         for image_np in images_np:
             image_path = os.path.join(params.outdir_gen, f'{i*params.batch_size+count:06d}.png')
-            count += 1
             PIL.Image.fromarray(image_np, 'RGB').save(image_path)
 
-            image_path = os.path.join(params.outdir_gen, f'{i*params.batch_size+count:06d}.npy')
-            np.savez_compressed(image_path, samples=images_np)
+            # save generated samples as .npz
+            image_path = os.path.join(params.outdir_gen, f'{i*params.batch_size+count:06d}.npz')
+            np.savez_compressed(image_path, samples=image_np)
 
-
+            count += 1
 
 # prepare data loader (CIFAR-10, MINST later, simple toy 2-dimensional Case)
     # ${project_page}/DG/
@@ -88,6 +89,7 @@ if params.task_generate_samples:
 ############################ Next step ############################
 
 # train the discriminator (conditional and unconditional) for discriminator guiding
+
 if params.task_train_discriminator:
     print("\nTrain discriminator...")
     
@@ -95,9 +97,92 @@ if params.task_train_discriminator:
     train_dataloader, val_dataloader, test_dataloader = get_dataloader()
 
     # train discriminator
+    optimizer = torch.optim.Adam(entire_dis_model.parameters(), lr=params.lr, weight_decay=1e-7)
+    bce_loss = torch.nn.BCELoss()
+    scaler = lambda x: (x / 127.5) - 1
 
+    loss_list =  []  
+    accuracy_list = []
+    loss_val_list = []
+    accuracy_val_list = []
+    for epoch in tqdm(range(params.nbr_epochs)):
+        classifier_model.eval()
+        discriminator_model.train()
+        accuracy = 0
+        loss = 0
+        for i, data in enumerate(train_dataloader):
+            optimizer.zero_grad()
+            # get data
+            images, labels = data
+            images = images.to(DEVICE)
+            labels = labels.to(DEVICE)
 
+            # scale data [0, 255] to [-1,1]
+            images = scaler(images)
 
+            t, _ = diffusion.get_diffusion_time(images.shape[0], images.device, importance_sampling=params.importance_sampling)
+            mean, std = diffusion.marginal_prob(t)
+            z = torch.randn_like(images)
+            perturbed_inputs = mean[:, None, None, None] * images + std[:, None, None, None] * z
+
+            ## Forward
+            with torch.no_grad():
+                pretrained_feature = classifier_model(perturbed_inputs, timesteps=t, feature=True)
+            label_prediction = discriminator_model(pretrained_feature, t, sigmoid=True).view(-1)
+
+            ## Backward
+            loss_net = bce_loss(label_prediction, labels)
+            loss_net.backward()
+            optimizer.step()
+
+            # compute average loss, accuracy            
+            loss += loss_net.item()
+            accuracy += ((label_prediction > 0.5) == labels).float().mean().item()
+            loss_list.append(loss / len(train_dataloader))
+            accuracy_list.append(accuracy / len(train_dataloader))
+
+        
+        # validation loop
+        classifier_model.eval()
+        discriminator_model.eval()
+        loss = 0
+        accuracy = 0
+        for val in val_dataloader:
+            # get data
+            images, labels = val
+            images = images.to(DEVICE)
+            labels = labels.to(DEVICE)
+
+            # scale data [0, 255] to [-1,1]
+            images = scaler(images)
+
+            t, _ = diffusion.get_diffusion_time(images.shape[0], images.device, importance_sampling=params.importance_sampling)
+            mean, std = diffusion.marginal_prob(t)
+            z = torch.randn_like(images)
+            perturbed_inputs = mean[:, None, None, None] * images + std[:, None, None, None] * z
+
+            ## Forward
+            with torch.no_grad():
+                pretrained_feature = classifier_model(perturbed_inputs, timesteps=t, feature=True)
+                label_prediction = discriminator_model(pretrained_feature, t, sigmoid=True).view(-1)
+
+            ## Backward
+            loss += bce_loss(label_prediction, labels).item()
+
+            # compute accuracy
+            accuracy += ((label_prediction > 0.5) == labels).float().mean().item()
+            loss_val_list.append(bce_loss / len(val_dataloader))
+            accuracy_val_list.append(accuracy / len(val_dataloader))
+
+        # save model, loss, accuracy
+        if epoch % 5 == 0:
+            torch.save(discriminator_model.state_dict(), os.path.join(params.outdir_discriminator, f'discriminator_{epoch}.pth'))
+            np.save(os.path.join(params.outdir_eval, f'loss.npz'), loss_list)
+            np.save(os.path.join(params.outdir_eval, f'accuracy.npz'), accuracy_list)
+            np.save(os.path.join(params.outdir_eval, f'loss_val.npz'), loss_val_list)
+            np.save(os.path.join(params.outdir_eval, f'accuracy_val.npz'), accuracy_val_list)
+        
+    
 
 # generator-quided sample generator to check the model is working
 

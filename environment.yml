@@ -14,10 +14,12 @@ dependencies:
   - requests
   - tqdm
   - imageio
-  - torchvision
+  - torchvision=0.13.1
   - matplotlib
   - pip:
     - imageio-ffmpeg>=0.4.3
     - pyspng
     - torchinfo # own
     - torch-utils # own
+    - scikit-learn
+    - matplotlib

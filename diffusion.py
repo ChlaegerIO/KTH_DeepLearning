@@ -163,6 +163,30 @@ class Diffusion:
         mean = torch.exp(log_mean_coeff)
         std = torch.sqrt(1. - torch.exp(2. * log_mean_coeff))
         return mean, std
+    
+    @property
+    def T(self):
+        return 1
+    
+    def get_diffusion_time(self, batch_size, batch_device, t_min=1e-5, importance_sampling=True):
+        if importance_sampling:
+            Z = self.normalizing_constant(t_min)
+            u = torch.rand(batch_size, device=batch_device)
+            return (-self.beta_min + torch.sqrt(self.beta_min ** 2 + 2 * (self.beta_max - self.beta_min) *
+                    torch.log(1. + torch.exp(Z * u + self.antiderivative(t_min))))) / (self.beta_max - self.beta_min), Z.detach()
+        else:
+            return torch.rand(batch_size, device=batch_device) * (self.T - t_min) + t_min, 1
+        
+    def normalizing_constant(self, t_min):
+        return self.antiderivative(self.T) - self.antiderivative(t_min)
+
+    def antiderivative(self, t, stabilizing_constant=0.):
+            if isinstance(t, float) or isinstance(t, int):
+                t = torch.tensor(t).float()
+            return torch.log(1. - torch.exp(- self.integral_beta(t)) + stabilizing_constant) + self.integral_beta(t)
+
+    def integral_beta(self, t):
+            return 0.5 * t ** 2 * (self.beta_max - self.beta_min) + t * self.beta_min
 
 
 # combine classifier_model and discriminator_model to one model, where only discriminator_model is trained
