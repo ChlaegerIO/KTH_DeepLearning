@@ -6,13 +6,14 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from PIL import Image
 import os
+from tqdm import tqdm
 
 import params
 
 class CustomDataset(Dataset):
     def __init__(self, data, targets, transform=None):
-        self.data = torch.tensor(data)
-        self.targets = torch.tensor(targets)
+        self.data = torch.tensor(data).clone().detach()
+        self.targets = torch.tensor(targets).clone().detach()
         self.transform = transform
 
     def __len__(self):
@@ -29,14 +30,15 @@ class CustomDataset(Dataset):
 
 
 # TODO: do we need sample size to match shapes of generated and real data?
-def get_dataloader(generated_data=None):
+def get_dataloader(batch_size=params.batch_size):
+    print("Get dataloader...")
     real_data = np.load('data/true_data.npz')['arr_0']
 
     # get generated data
     images = []
 
     # Loop through all files in the directory
-    for filename in os.listdir(params.outdir_gen):
+    for filename in tqdm(os.listdir(params.outdir_gen)):
         if filename.endswith(".png"):
             # Construct full file path
             filepath = os.path.join(params.outdir_gen, filename)
@@ -45,17 +47,15 @@ def get_dataloader(generated_data=None):
                 # Convert to NumPy array and append to list
                 images.append(np.asarray(img))
 
-    # Stack all images into a single NumPy array
+    # Stack all images into a single NumPy array [batch_size, 3, 32, 32]
     all_images = np.stack(images)
+    generated_data = np.transpose(np.array(all_images[0:50000]), (0, 3, 1, 2))
+    real_data = np.transpose(real_data, (0, 3, 1, 2))
+    # print("generated shape", generated_data.shape)
+    # print("real shape", real_data.shape)
 
-    # all_images is now a NumPy array containing all your images
-    # print(all_images.shape)
-    # print(real_data.shape)
-
-    generated_data = np.array(all_images)
-
-    real_data = real_data[0:7]
-
+    # real_data = real_data[0:7]
+    assert real_data.shape == generated_data.shape, f"real {real_data.shape} and generated {generated_data.shape} data shapes do not match!"
 
     all_data = np.concatenate((real_data, generated_data))
     # all_data = real_data
@@ -69,13 +69,13 @@ def get_dataloader(generated_data=None):
     #transform = transforms.Compose([transforms.ToTensor()])
 
     train_dataset = CustomDataset(train_data, train_label)
-    train_dataloader = DataLoader(train_dataset, batch_size=params.batch_size)
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size)
 
     val_dataset = CustomDataset(val_data, val_label)
-    val_dataloader = DataLoader(val_dataset, batch_size=params.batch_size)
+    val_dataloader = DataLoader(val_dataset, batch_size=batch_size)
 
     test_dataset = CustomDataset(test_data, test_label)
-    test_dataloader = DataLoader(test_dataset, batch_size=params.batch_size)
+    test_dataloader = DataLoader(test_dataset, batch_size=batch_size)
 
     return train_dataloader, val_dataloader, test_dataloader
 

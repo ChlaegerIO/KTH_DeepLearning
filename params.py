@@ -3,6 +3,7 @@
 ################################ Task to run ################################
 task_generate_samples = False
 task_train_discriminator = True
+task_train_ensemble = False
 # task_eval = False
 
 ################################ file paths ################################
@@ -33,5 +34,12 @@ nbr_samples = 50000
 ################################ Discriminator training ################################
 importance_sampling = True
 nbr_epochs = 20
-lr = 0.0001
+lr = 3e-4   # 0.0003
+weight_decay = 1e-7
+min_diff_time = 1e-5
 
+
+################################ Ensemble training ################################
+nbr_ensemble_epochs = 20
+lr_ensemble = 0.0001
+nbr_ensemble = 5

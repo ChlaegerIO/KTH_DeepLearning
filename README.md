@@ -2,7 +2,9 @@
 
 ## Erkenntnisse / Ideen für Experimente
 - Bei Formel Seite 23 (paper) ist min und max vertauscht gegenüber t_steps im code, max - min macht für mich mehr Sinn!
-- Ensemble von mehreren Discriminator Modellen
+- Ensemble von mehreren Discriminator Modellen:
+    - Trainiere N Modelle und nehme den Durchschnitt der Outputs
+    - Trainiere N Modelle und nehme den Durchschnitt der Parameter als neues Modell
 
 ## Fragen an Betreuer
 - From where should we use the dataset? Official paper one or external CIFAR-10?
