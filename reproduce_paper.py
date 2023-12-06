@@ -32,7 +32,7 @@ classifier_model = load_classifier(img_size=32, device=DEVICE)
 # print("\nClassifier:",classifier_model)
 
 # load pretrained or own discriminator
-discriminator_model = load_discriminator(model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True)
+discriminator_model = load_discriminator(model_type="own", in_size=8, in_channels=512, device=DEVICE, eval=True)
 # print("\nDiscriminator:", discriminator_model)
 
 entire_dis_model = Discriminator(classifier_model, discriminator_model, enable_grad=True)
