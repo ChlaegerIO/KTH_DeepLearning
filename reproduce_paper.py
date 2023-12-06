@@ -10,6 +10,7 @@ import pickle
 from tqdm import tqdm
 import PIL.Image
 import matplotlib.pyplot as plt
+from sklearn.metrics import precision_score, recall_score
 
 # own files imports
 from utils import load_classifier, load_discriminator#, get_discriminator
@@ -102,6 +103,8 @@ if params.task_train_discriminator:
     accuracy_val_list = []       
     classifier_model.eval()
     for epoch in tqdm(range(params.nbr_epochs)):
+        accuracy_epoch = []
+        loss_epoch = []
         discriminator_model.train()
         for i, data in enumerate(train_dataloader):
             optimizer.zero_grad()
@@ -131,8 +134,14 @@ if params.task_train_discriminator:
 
             # compute average loss, accuracy            
             accuracy = ((label_prediction > 0.5) == labels).float().mean().item()
-            loss_list.append(loss_net.item())
-            accuracy_list.append(accuracy)
+            loss_epoch.append(loss_net.item())
+            accuracy_epoch.append(accuracy)
+        
+        accuracy_average = np.mean(accuracy_epoch)
+        accuracy_list.append(accuracy_average)
+
+        loss_average = np.mean(loss_epoch)
+        loss_list.append(loss_average)
 
         
         # validation loop
@@ -171,33 +180,17 @@ if params.task_train_discriminator:
         # save model, loss, accuracy
         if epoch % 5 == 0:
             torch.save(discriminator_model.state_dict(), os.path.join(params.outdir_discriminator, f'discriminator_{epoch}.pth'))
-            np.save(os.path.join(params.outdir_eval, f'loss.npz'), loss_list)
-            np.save(os.path.join(params.outdir_eval, f'accuracy.npz'), accuracy_list)
-            np.save(os.path.join(params.outdir_eval, f'loss_val.npz'), loss_val_list)
-            np.save(os.path.join(params.outdir_eval, f'accuracy_val.npz'), accuracy_val_list)
-        
-    
-    # plot loss and accuracy
-    plt.figure()
-    plt.plot(np.arange(len(loss_list)), loss_list)
-    plt.legend(['train loss'])
-    plt.xlabel('epoch*batch_size')
-    plt.ylabel('loss')
-    plt.figure()
-    plt.plot(np.arange(len(accuracy_list)), accuracy_list)
-    plt.legend(['train accuracy'])
-    plt.xlabel('epoch*batch_size')
-    plt.ylabel('accuracy')
-    plt.figure()
-    plt.plot(np.arange(len(loss_val_list)), loss_val_list)
-    plt.legend(['validation loss'])
-    plt.xlabel('epoch')
-    plt.ylabel('loss')
-    plt.figure()
-    plt.plot(np.arange(len(accuracy_val_list)), accuracy_val_list)
-    plt.legend(['validation accuracy'])
-    plt.xlabel('epoch')
-    plt.ylabel('accuracy')
+            np.save(os.path.join(params.outdir_eval, f'loss_train'), loss_list)
+            np.save(os.path.join(params.outdir_eval, f'accuracy_train'), accuracy_list)
+            np.save(os.path.join(params.outdir_eval, f'loss_val'), loss_val_list)
+            np.save(os.path.join(params.outdir_eval, f'accuracy_val'), accuracy_val_list)
+
+        if epoch == params.nbr_epochs - 1:
+            torch.save(discriminator_model.state_dict(), os.path.join(params.outdir_discriminator, f'discriminator_{epoch}.pth'))
+            np.save(os.path.join(params.outdir_eval, f'loss_train'), loss_list)
+            np.save(os.path.join(params.outdir_eval, f'accuracy_train'), accuracy_list)
+            np.save(os.path.join(params.outdir_eval, f'loss_val'), loss_val_list)
+            np.save(os.path.join(params.outdir_eval, f'accuracy_val'), accuracy_val_list)
 
 
 # TODO: train ensemble

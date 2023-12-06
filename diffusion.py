@@ -92,6 +92,7 @@ class Diffusion:
             # Denoise prediction of diffusion model
             predicted_noise = self.score_model(x_hat, t_hat).to(torch.float64)
             predicted_noise_hat = (x_hat - predicted_noise) / t_hat[:,None,None,None]
+            dg_correction_hat = 0
 
             # DG correction 1st order
             if self.dg_weight_1order != 0:
