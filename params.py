@@ -7,9 +7,9 @@ task_train_ensemble = False
 # task_eval = False
 
 ################################ file paths ################################
-diffusion_mPath = './model/edm-cifar10-32x32-uncond-vp.pkl'
-classifier_mPath = './model/32x32_classifier.pt'
-discriminator_mPath = './model/discriminator_60_uncond_pretrained.pt'
+diffusion_mPath = './model/pretrained/edm-cifar10-32x32-uncond-vp.pkl'
+classifier_mPath = './model/pretrained/32x32_classifier.pt'
+discriminator_mPath = './model/pretrained/discriminator_60_uncond_pretrained.pt'
 outdir_gen = './data/generated_fake_samples_cifar10_unconditional'
 outdir_discriminator = './model'
 outdir_eval = './evaluation'
