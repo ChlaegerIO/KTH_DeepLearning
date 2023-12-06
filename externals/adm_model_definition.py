@@ -771,5 +771,6 @@ class EncoderUNetModel(nn.Module):
             if feature:
                 return h
             if sigmoid:
-                return F.sigmoid(self.out(h))
+                # return F.sigmoid(self.out(h))
+                return th.sigmoid(self.out(h))      # fix user warning
             return self.out(h)
