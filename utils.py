@@ -44,11 +44,11 @@ def load_discriminator(model_type, in_size, in_channels, device, condition=None,
         condition=condition,
     )
     
-    if model_type == 'pretrained':
+    if model_type == 'pretrained':      # discriminator of paper
         discriminator_model = create_encoder_unet(**discriminator_args)
         discriminator_model.to(device)
         discriminator_model.load_state_dict(torch.load(params.discriminator_mPath))
-    elif model_type == 'own':
+    elif model_type == 'own':           # own discriminator
         discriminator_model = create_encoder_unet(**discriminator_args)
         discriminator_model.to(device)
     else:

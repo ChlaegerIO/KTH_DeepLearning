@@ -33,7 +33,7 @@ classifier_model = load_classifier(img_size=32, device=DEVICE)
 # print("\nClassifier:",classifier_model)
 
 # load pretrained or own discriminator
-discriminator_model = load_discriminator(model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True)
+discriminator_model = load_discriminator(model_type="own", in_size=8, in_channels=512, device=DEVICE, eval=True)
 # print("\nDiscriminator:", discriminator_model)
 
 entire_dis_model = Discriminator(classifier_model, discriminator_model, enable_grad=True)
@@ -178,27 +178,141 @@ if params.task_train_discriminator:
         accuracy_val_list.append(accuracy_val / len(val_dataloader))
 
         # save model, loss, accuracy
-        if epoch % 5 == 0:
+        if epoch % 5 == 0 or epoch == params.nbr_epochs-1:
             torch.save(discriminator_model.state_dict(), os.path.join(params.outdir_discriminator, f'discriminator_{epoch}.pth'))
-            np.save(os.path.join(params.outdir_eval, f'loss_train'), loss_list)
-            np.save(os.path.join(params.outdir_eval, f'accuracy_train'), accuracy_list)
-            np.save(os.path.join(params.outdir_eval, f'loss_val'), loss_val_list)
-            np.save(os.path.join(params.outdir_eval, f'accuracy_val'), accuracy_val_list)
+            np.save(os.path.join(params.outdir_eval, f'loss.npz'), loss_list)
+            np.save(os.path.join(params.outdir_eval, f'accuracy.npz'), accuracy_list)
+            np.save(os.path.join(params.outdir_eval, f'loss_val.npz'), loss_val_list)
+            np.save(os.path.join(params.outdir_eval, f'accuracy_val.npz'), accuracy_val_list)
+            print(f"Epoch {epoch}: val loss={loss_val_list[-1]}, val accuracy={accuracy_val_list[-1]}, loss={loss_list[-1]}, accuracy={accuracy_list[-1]}")
 
-        if epoch == params.nbr_epochs - 1:
-            torch.save(discriminator_model.state_dict(), os.path.join(params.outdir_discriminator, f'discriminator_{epoch}.pth'))
-            np.save(os.path.join(params.outdir_eval, f'loss_train'), loss_list)
-            np.save(os.path.join(params.outdir_eval, f'accuracy_train'), accuracy_list)
-            np.save(os.path.join(params.outdir_eval, f'loss_val'), loss_val_list)
-            np.save(os.path.join(params.outdir_eval, f'accuracy_val'), accuracy_val_list)
-
-
-# TODO: train ensemble
+# train ensemble
 if params.task_train_ensemble:
     print("\nTrain ensemble...")
+    ensemble_dict = {}
+    ensemble_dict['ensemble_0'] = {'nbr_epochs': params.nbr_epochs_e0, 'lr': params.lr_e0, 'weight_decay': params.weight_decay_e0, 'min_diff_time': params.min_diff_time_e0}
+    ensemble_dict['ensemble_1'] = {'nbr_epochs': params.nbr_epochs_e1, 'lr': params.lr_e1, 'weight_decay': params.weight_decay_e1, 'min_diff_time': params.min_diff_time_e1}
+    ensemble_dict['ensemble_2'] = {'nbr_epochs': params.nbr_epochs_e2, 'lr': params.lr_e2, 'weight_decay': params.weight_decay_e2, 'min_diff_time': params.min_diff_time_e2}
+    ensemble_dict['ensemble_3'] = {'nbr_epochs': params.nbr_epochs_e3, 'lr': params.lr_e3, 'weight_decay': params.weight_decay_e3, 'min_diff_time': params.min_diff_time_e3}
+    ensemble_dict['ensemble_4'] = {'nbr_epochs': params.nbr_epochs_e4, 'lr': params.lr_e4, 'weight_decay': params.weight_decay_e4, 'min_diff_time': params.min_diff_time_e4}
+    ensemble_dict['ensemble_5'] = {'nbr_epochs': params.nbr_epochs_e5, 'lr': params.lr_e5, 'weight_decay': params.weight_decay_e5, 'min_diff_time': params.min_diff_time_e5}
 
+    # load data
+    train_dataloader, val_dataloader, test_dataloader = get_dataloader(batch_size=params.batch_size)
 
+    # evaluation list initialization for all ensembles
+    loss_dict = {}
+    accuracy_dict = {}
+    loss_val_dict = {}
+    accuracy_val_dict = {}
 
+    # loop over all ensembles
+    for e in ensemble_dict.keys():
+        print(f"\nTrain {e}...")
+        # train discriminator
+        optimizer = optim.Adam(discriminator_model.parameters(), lr=ensemble_dict[e]['lr'], weight_decay=ensemble_dict[e]['weight_decay'])
+        bce_loss = nn.BCELoss()
+        scaler = lambda x: (x / 127.5) - 1
+
+        loss_list =  []  
+        accuracy_list = []
+        loss_val_list = []
+        accuracy_val_list = []       
+        classifier_model.eval()
+        for epoch in tqdm(range(ensemble_dict[e]['nbr_epochs'])):
+            discriminator_model.train()
+            loss_train = 0
+            accuracy_train = 0
+            for i, data in enumerate(train_dataloader):
+                optimizer.zero_grad()
+                # get data
+                images, labels = data
+                images = images.to(DEVICE)
+                labels = labels.to(DEVICE)
+
+                # scale data [0, 255] to [-1,1]
+                images = scaler(images)
+
+                # sample time, diffuse data
+                t, _ = diffusion.get_diffusion_time(images.shape[0], images.device, t_min=ensemble_dict[e]['min_diff_time'], importance_sampling=params.importance_sampling)
+                mean, std = diffusion.marginal_prob(t)
+                z = torch.randn_like(images)
+                perturbed_inputs = mean[:, None, None, None] * images + std[:, None, None, None] * z
+
+                ## Forward
+                with torch.no_grad():
+                    pretrained_feature = classifier_model(perturbed_inputs, timesteps=t, feature=True)
+                label_prediction = discriminator_model(pretrained_feature, t, sigmoid=True).view(-1)
+
+                ## Backward
+                loss_net = bce_loss(label_prediction, labels)
+                loss_net.backward()
+                optimizer.step()
+
+                # compute average loss, accuracy
+                loss_train += loss_net.item()
+                accuracy_train += ((label_prediction > 0.5) == labels).float().mean().item()
+            
+            # per epoch
+            loss_list.append(loss_train / len(train_dataloader))
+            accuracy_list.append(accuracy_train / len(train_dataloader))
+
+            
+            # validation loop
+            discriminator_model.eval()
+            loss_val = 0
+            accuracy_val = 0
+            for val in val_dataloader:
+                # get data
+                images, labels = val
+                images = images.to(DEVICE)
+                labels = labels.to(DEVICE)
+
+                # scale data [0, 255] to [-1,1]
+                images = scaler(images)
+
+                t, _ = diffusion.get_diffusion_time(images.shape[0], images.device, importance_sampling=params.importance_sampling)
+                mean, std = diffusion.marginal_prob(t)
+                z = torch.randn_like(images)
+                perturbed_inputs = mean[:, None, None, None] * images + std[:, None, None, None] * z
+
+                ## Forward
+                with torch.no_grad():
+                    pretrained_feature = classifier_model(perturbed_inputs, timesteps=t, feature=True)
+                    label_prediction = discriminator_model(pretrained_feature, t, sigmoid=True).view(-1)
+
+                ## Backward
+                loss_val += bce_loss(label_prediction, labels).item()
+
+                # compute accuracy
+                accuracy_val += ((label_prediction > 0.5) == labels).float().mean().item()
+
+            # per epoch
+            loss_val_list.append(loss_val / len(val_dataloader))
+            accuracy_val_list.append(accuracy_val / len(val_dataloader))
+
+            # save model, loss, accuracy
+            if epoch % 5 == 0 or epoch == params.nbr_epochs-1:
+                torch.save(discriminator_model.state_dict(), os.path.join(params.outdir_discriminator, f'discriminator_{e}_{epoch}.pth'))
+                print(f"Epoch {epoch}: val loss={loss_val_list[-1]}, val accuracy={accuracy_val_list[-1]}, loss={loss_list[-1]}, accuracy={accuracy_list[-1]}")
+            if epoch % 10 == 0 or epoch == params.nbr_epochs-1:
+                np.save(os.path.join(params.outdir_eval, f'loss_{e}.npz'), loss_list)
+                np.save(os.path.join(params.outdir_eval, f'accuracy_{e}.npz'), accuracy_list)
+                np.save(os.path.join(params.outdir_eval, f'loss_val_{e}.npz'), loss_val_list)
+                np.save(os.path.join(params.outdir_eval, f'accuracy_val_{e}.npz'), accuracy_val_list)
+
+        # save loss, accuracy for each ensemble
+        loss_dict[e] = loss_list
+        accuracy_dict[e] = accuracy_list
+        loss_val_dict[e] = loss_val_list
+        accuracy_val_dict[e] = accuracy_val_list
+
+    # save loss, accuracy for all ensembles
+    np.save(os.path.join(params.outdir_eval, f'loss_dict.npz'), loss_dict)
+    np.save(os.path.join(params.outdir_eval, f'accuracy_dict.npz'), accuracy_dict)
+    np.save(os.path.join(params.outdir_eval, f'loss_val_dict.npz'), loss_val_dict)
+    np.save(os.path.join(params.outdir_eval, f'accuracy_val_dict.npz'), accuracy_val_dict)
+    
 
 # evaluation (FID, IS, etc.)
     # ${project_page}/DG/
