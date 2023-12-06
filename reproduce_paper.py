@@ -169,7 +169,7 @@ if params.task_train_discriminator:
         accuracy_val_list.append(accuracy_val / len(val_dataloader))
 
         # save model, loss, accuracy
-        if epoch % 5 == 0:
+        if epoch % 5 == 0 or epoch == params.nbr_epochs-1:
             torch.save(discriminator_model.state_dict(), os.path.join(params.outdir_discriminator, f'discriminator_{epoch}.pth'))
             np.save(os.path.join(params.outdir_eval, f'loss.npz'), loss_list)
             np.save(os.path.join(params.outdir_eval, f'accuracy.npz'), accuracy_list)
@@ -177,32 +177,7 @@ if params.task_train_discriminator:
             np.save(os.path.join(params.outdir_eval, f'accuracy_val.npz'), accuracy_val_list)
             print(f"Epoch {epoch}: val loss={loss_val_list[-1]}, val accuracy={accuracy_val_list[-1]}, loss={loss_list[-1]}, accuracy={accuracy_list[-1]}")
 
-        
-    
-    # plot loss and accuracy
-    plt.figure()
-    plt.plot(np.arange(len(loss_list)), loss_list)
-    plt.legend(['train loss'])
-    plt.xlabel('epoch*batch_size')
-    plt.ylabel('loss')
-    plt.figure()
-    plt.plot(np.arange(len(accuracy_list)), accuracy_list)
-    plt.legend(['train accuracy'])
-    plt.xlabel('epoch*batch_size')
-    plt.ylabel('accuracy')
-    plt.figure()
-    plt.plot(np.arange(len(loss_val_list)), loss_val_list)
-    plt.legend(['validation loss'])
-    plt.xlabel('epoch')
-    plt.ylabel('loss')
-    plt.figure()
-    plt.plot(np.arange(len(accuracy_val_list)), accuracy_val_list)
-    plt.legend(['validation accuracy'])
-    plt.xlabel('epoch')
-    plt.ylabel('accuracy')
-
-
-# TODO: train ensemble
+# train ensemble
 if params.task_train_ensemble:
     print("\nTrain ensemble...")
     ensemble_dict = {}
@@ -308,10 +283,10 @@ if params.task_train_ensemble:
             accuracy_val_list.append(accuracy_val / len(val_dataloader))
 
             # save model, loss, accuracy
-            if epoch % 5 == 0:
+            if epoch % 5 == 0 or epoch == params.nbr_epochs-1:
                 torch.save(discriminator_model.state_dict(), os.path.join(params.outdir_discriminator, f'discriminator_{e}_{epoch}.pth'))
                 print(f"Epoch {epoch}: val loss={loss_val_list[-1]}, val accuracy={accuracy_val_list[-1]}, loss={loss_list[-1]}, accuracy={accuracy_list[-1]}")
-            if epoch % 10 == 0:
+            if epoch % 10 == 0 or epoch == params.nbr_epochs-1:
                 np.save(os.path.join(params.outdir_eval, f'loss_{e}.npz'), loss_list)
                 np.save(os.path.join(params.outdir_eval, f'accuracy_{e}.npz'), accuracy_list)
                 np.save(os.path.join(params.outdir_eval, f'loss_val_{e}.npz'), loss_val_list)
@@ -329,31 +304,6 @@ if params.task_train_ensemble:
     np.save(os.path.join(params.outdir_eval, f'loss_val_dict.npz'), loss_val_dict)
     np.save(os.path.join(params.outdir_eval, f'accuracy_val_dict.npz'), accuracy_val_dict)
     
-    # plot loss and accuracy
-    plt.figure()
-    plt.plot(np.arange(len(loss_dict['ensemble_5'])), loss_dict['ensemble_0'], loss_dict['ensemble_1'], loss_dict['ensemble_2'], loss_dict['ensemble_3'], loss_dict['ensemble_4'], loss_dict['ensemble_5'])
-    plt.legend(['train loss'])
-    plt.xlabel('epoch')
-    plt.ylabel('loss')
-    plt.figure()
-    plt.plot(np.arange(len(accuracy_dict['ensemble_5'])), accuracy_dict['ensemble_0'], accuracy_dict['ensemble_1'], accuracy_dict['ensemble_2'], accuracy_dict['ensemble_3'], accuracy_dict['ensemble_4'], accuracy_dict['ensemble_5'])
-    plt.legend(['train accuracy'])
-    plt.xlabel('epoch')
-    plt.ylabel('accuracy')
-    plt.figure()
-    plt.plot(np.arange(len(loss_val_dict['ensemble_5'])), loss_val_dict['ensemble_0'], loss_val_dict['ensemble_1'], loss_val_dict['ensemble_2'], loss_val_dict['ensemble_3'], loss_val_dict['ensemble_4'], loss_val_dict['ensemble_5'])
-    plt.legend(['validation loss'])
-    plt.xlabel('epoch')
-    plt.ylabel('loss')
-    plt.figure()
-    plt.plot(np.arange(len(accuracy_val_dict['ensemble_5'])), accuracy_val_dict['ensemble_0'], accuracy_val_dict['ensemble_1'], accuracy_val_dict['ensemble_2'], accuracy_val_dict['ensemble_3'], accuracy_val_dict['ensemble_4'], accuracy_val_dict['ensemble_5'])
-    plt.legend(['validation accuracy'])
-    plt.xlabel('epoch')
-    plt.ylabel('accuracy')
-
-
-
-
 
 # evaluation (FID, IS, etc.)
     # ${project_page}/DG/

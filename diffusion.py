@@ -94,6 +94,7 @@ class Diffusion:
             predicted_noise_hat = (x_hat - predicted_noise) / t_hat[:,None,None,None]
 
             # DG correction 1st order
+            dg_correction_hat = 0
             if self.dg_weight_1order != 0:
                 dg_correction, log_ratio = self.get_grad_log_ratio(x_hat, t_hat, time_min, time_max)
                 if boosting and i % period_weight == 0:
