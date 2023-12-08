@@ -11,9 +11,11 @@ from tqdm import tqdm
 import PIL.Image
 import matplotlib.pyplot as plt
 from sklearn.metrics import precision_score, recall_score
+import dnnlib
 
 # own files imports
 from utils import load_classifier, load_discriminator#, get_discriminator
+from externals.fid_npzs import calculate_inception_stats_npz, calculate_fid_from_inception_stats
 from unconditional_dataloader import get_dataloader
 from diffusion import Diffusion, Discriminator
 import params
@@ -45,7 +47,7 @@ nbr_batches = params.nbr_samples // params.batch_size + 1
 
 if params.task_generate_samples:
     print("\nGenerate samples...")
-    os.makedirs(params.outdir_gen, exist_ok=True)
+    os.makedirs(params.outdir_gen_path, exist_ok=True)
     for i in tqdm(range(nbr_batches)):
         # sample from latent space (batch_size, 3, 32, 32)
         x_latent = torch.randn(params.batch_size, diffusion_model.img_channels, diffusion_model.img_resolution, diffusion_model.img_resolution, device=DEVICE)
@@ -57,23 +59,14 @@ if params.task_generate_samples:
         images_np = (images * 127.5 + 128).clip(0, 255).to(torch.uint8).permute(0, 2, 3, 1).cpu().numpy()
         count = 0
         for image_np in images_np:
-            image_path = os.path.join(params.outdir_gen, f'{i*params.batch_size+count:06d}.png')
+            image_path = os.path.join(params.outdir_gen_path, f'{i*params.batch_size+count:06d}.png')
             PIL.Image.fromarray(image_np, 'RGB').save(image_path)
 
             # save generated samples as .npz
-            image_path = os.path.join(params.outdir_gen, f'{i*params.batch_size+count:06d}.npz')
+            image_path = os.path.join(params.outdir_gen_path, f'{i*params.batch_size+count:06d}.npz')
             np.savez_compressed(image_path, samples=image_np)
 
             count += 1
-
-# prepare data loader (CIFAR-10, MINST later, simple toy 2-dimensional Case)
-    # ${project_page}/DG/
-    # ├── data
-    # │   ├── true_data.npz
-    # │   ├── true_data_label.npz
-    # ├── ...
-
-
 
 # test classifier/discriminator
 # Batch = 128
@@ -314,16 +307,61 @@ if params.task_train_ensemble:
     np.save(os.path.join(params.outdir_eval, f'accuracy_val_dict.npz'), accuracy_val_dict)
     
 
-# evaluation (FID, IS, etc.)
-    # ${project_page}/DG/
-    # ├── stats
-    # │   ├── cifar10-32x32.npz
-    # ├── ...
+if params.task_eval:
+    # Calculate FID for generated images after training
+    image_path = os.getcwd() + params.outdir_gen_path
+    ref_path = os.getcwd() + params.FID_stats_path
+
+    print(f'Loading dataset reference statistics from "{ref_path}"...')
+    with dnnlib.util.open_url(ref_path) as f:
+        ref = dict(np.load(f))
+    mu, sigma = calculate_inception_stats_npz(image_path=image_path, num_samples=params.nbr_samples, device=DEVICE)
+    print('Calculating FID...')
+    fid = calculate_fid_from_inception_stats(mu, sigma, ref['mu'], ref['sigma'])
+    print(f'{image_path.split("/")[-1]}, {fid:g}')
 
 
 
-# questions: 
-    # - what do we want to show with the MINST dataset? --> compare with state of the art GAN, VAE, etc.?
-    # - How to achieve NFE? - I'm not sure about that
-    # - Why did the paper uses Euler 1st order with step size 0.001 and not RK4 with step size 0.1 --> faster?
-            
+    # Calculate precision and recall
+    print("\nCalculate precision and recall...")
+    _, val_dataloader, _ = get_dataloader(batch_size=params.batch_size)        
+    
+    # scale data [0, 255] to [-1,1]
+    scaler = lambda x: (x / 127.5) - 1
+    
+    precision = 0
+    recall = 0
+    for val in tqdm(val_dataloader):
+        # load generated samples
+        images, labels = val
+        images = images.to(DEVICE)
+        labels = labels.to(DEVICE)
+
+        # scale images
+        images = scaler(images)
+
+        # sample time, diffuse data
+        t, _ = diffusion.get_diffusion_time(images.shape[0], images.device, t_min=params.min_diff_time, importance_sampling=params.importance_sampling)
+        mean, std = diffusion.marginal_prob(t)
+        z = torch.randn_like(images)
+        perturbed_inputs = mean[:, None, None, None] * images + std[:, None, None, None] * z
+
+        # compute precision and recall
+        with torch.no_grad():
+            pretrained_feature = classifier_model(perturbed_inputs, timesteps=t, feature=True)
+            label_prediction = discriminator_model(pretrained_feature, t, sigmoid=True).view(-1)
+
+        precision += precision_score(labels.cpu().numpy(), label_prediction.cpu().numpy() > 0.5)
+        recall += recall_score(labels.cpu().numpy(), label_prediction.cpu().numpy() > 0.5)
+    
+    precision /= nbr_batches
+    recall /= nbr_batches
+
+    eval_metrics = (fid, precision, recall)
+
+    print(f'Precision: {precision}')
+    print(f'Recall: {recall}')
+
+    # save evaluation metrics
+    np.save(os.path.join(params.outdir_eval, f'eval_metrics'), eval_metrics)
+

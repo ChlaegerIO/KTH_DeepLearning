@@ -1,8 +1,5 @@
 .vscode
-*.pt
+/data
+/model/pretrained
+*/__pycache__
 /__pycache__
-*.pkl
-*.npz
-.idea
-*.pyc
-*.png
