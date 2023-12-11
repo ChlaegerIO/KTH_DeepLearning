@@ -383,6 +383,15 @@ if params.task_eval:
 
     # Calculate precision and recall
     print("\nCalculate precision and recall...")
+    # load ensemble dg model
+    ensemble_model = []
+    ensemble_model.append(load_discriminator(dis_path=params.discriminator_mPath_e0, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
+    ensemble_model.append(load_discriminator(dis_path=params.discriminator_mPath_e1, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
+    ensemble_model.append(load_discriminator(dis_path=params.discriminator_mPath_e2, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
+    ensemble_model.append(load_discriminator(dis_path=params.discriminator_mPath_e3, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
+    ensemble_model.append(load_discriminator(dis_path=params.discriminator_mPath_e4, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
+    ensemble_model.append(load_discriminator(dis_path=params.discriminator_mPath_e5, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
+
     train_dataloader, val_dataloader, _ = get_dataloader(batch_size=params.batch_size)        
     
     # scale data [0, 255] to [-1,1]
@@ -409,7 +418,10 @@ if params.task_eval:
         # compute precision and recall
         with torch.no_grad():
             pretrained_feature = classifier_model(perturbed_inputs, timesteps=t, feature=True)
-            label_prediction = discriminator_model(pretrained_feature, t, sigmoid=True).view(-1)
+            label_prediction = 0
+            for model in ensemble_model:
+                label_prediction += model(pretrained_feature, t, sigmoid=True).view(-1)
+            label_prediction /= len(ensemble_model)
 
         assert label_prediction.shape == labels.shape
         precision += precision_score(labels.cpu().numpy(), label_prediction.cpu().numpy() > 0.5)

@@ -6,21 +6,20 @@ task_generate_samples = False
 task_generate_samples_ensemble = True
 task_train_discriminator = False
 task_train_ensemble = False
-task_eval = False
+task_eval = True
 
 ################################ file paths ################################
 
 diffusion_mPath = './model/edm-cifar10-32x32-uncond-vp.pkl'
 classifier_mPath = './model/32x32_classifier.pt'
-discriminator_mPath = './model/discriminator_ensemble_0_55.pth'
-outdir_gen = './data/generated_samples_ensemble_0' 
-outdir_gen_path = './data/generated_samples_cifar10_unconditional_ensemble'
+discriminator_mPath = './model/ensemble/discriminator_ensemble_0_55.pth'
+outdir_gen_path = './data/generated_samples_ensemble_all'
 outdir_discriminator = './model/ensemble'
-outdir_eval = './evaluation/dgPaper'
+outdir_eval = './evaluation/ensemble'
 
 
-eval_load_images_path = '\data\generated_samples_cifar10_unconditional_withDG'
-FID_stats_path = '\evaluation\FID_stats_file\cifar10-32x32.npz'
+eval_load_images_path = './data/generated_samples_ensemble_all'
+FID_stats_path = 'evaluation/FID_stats_file/cifar10-32x32.npz'
 
 # ensemble paths
 discriminator_mPath_e0 = './model/ensemble/discriminator_ensemble_0_55.pth'

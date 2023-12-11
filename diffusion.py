@@ -139,7 +139,7 @@ class Diffusion:
             pretrained_feature = self.classifier_model(x_t, timesteps=tau, feature=True)
             logits = 0
             for dg_model in dg_model_list:
-                logits += dg_model(pretrained_feature, timesteps=tau, condition=None)
+                logits += dg_model(pretrained_feature, timesteps=tau, condition=None).view(-1)
             logits /= len(dg_model_list)
             prediction = torch.clip(logits, 1e-5, 1. - 1e-5)
             log_ratio = torch.log(prediction / (1. - prediction))
