@@ -23,12 +23,12 @@ eval_load_images_path = '\data\generated_samples_cifar10_unconditional_withDG'
 FID_stats_path = '\evaluation\FID_stats_file\cifar10-32x32.npz'
 
 # ensemble paths
-discriminator_mPath_e0 = './model/ensemble/discriminator_ensemble_0_35.pth'
+discriminator_mPath_e0 = './model/ensemble/discriminator_ensemble_0_55.pth'
 discriminator_mPath_e1 = './model/ensemble/discriminator_ensemble_1_35.pth'
 discriminator_mPath_e2 = './model/ensemble/discriminator_ensemble_2_35.pth'
 discriminator_mPath_e3 = './model/ensemble/discriminator_ensemble_3_35.pth'
 discriminator_mPath_e4 = './model/ensemble/discriminator_ensemble_4_35.pth'
-discriminator_mPath_e5 = './model/ensemble/discriminator_ensemble_5_35.pth'
+discriminator_mPath_e5 = './model/ensemble/discriminator_ensemble_5_195.pth'
 
 ################################ DG diffusion ################################
 discriminator_type = 'pretrained'  # 'own' or 'pretrained'
@@ -37,7 +37,7 @@ img_size=32
 dg_weight_1order=2.0    # dg weight 1st order
 dg_weight_2order=0    # dg weight 2nd order
 
-time_min = 10e-5  # [0,1]
+time_min = 0.01  # [0,1]
 time_max = 1.0  # [0,1]
 boosting = True
 
