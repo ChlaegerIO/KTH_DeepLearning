@@ -25,7 +25,7 @@ def load_classifier(img_size, device):
     classifier_adm.eval()
     return classifier_adm
 
-def load_discriminator(model_type, in_size, in_channels, device, condition=None, eval=False):
+def load_discriminator(dis_path, model_type, in_size, in_channels, device, condition=None, eval=False):
     """
     Load pretrained discriminator model (U-Net?) for supported
     model_type: 'pretrained' or 'own'
@@ -47,7 +47,7 @@ def load_discriminator(model_type, in_size, in_channels, device, condition=None,
     if model_type == 'pretrained':      # discriminator of paper
         discriminator_model = create_encoder_unet(**discriminator_args)
         discriminator_model.to(device)
-        discriminator_model.load_state_dict(torch.load(params.discriminator_mPath))
+        discriminator_model.load_state_dict(torch.load(dis_path))
     elif model_type == 'own':           # own discriminator
         discriminator_model = create_encoder_unet(**discriminator_args)
         discriminator_model.to(device)

@@ -11,19 +11,15 @@ class Diffusion:
     score_model: score-based generative model
     dg_model: discriminator-guided discriminator model
     nbr_diff_steps: number of diffusion steps to run the model
-    min_dis: minimum discriminator level ????
-    max_dis: maximum discriminator level ????
     img_size: image size
     dg_weight_1order: weight of 1st order DG correction
     dg_weight_2order: weight of 2nd order DG correction
     device: device to run the model
     '''
-    def __init__(self, score_model, dg_model, nbr_diff_steps=35, min_dis=10e-5, max_dis=1-10e-5, img_size=32, dg_weight_1order=2.0, dg_weight_2order=0, device='cuda'):
+    def __init__(self, score_model, classifier_model, nbr_diff_steps=35, img_size=32, dg_weight_1order=2.0, dg_weight_2order=0, device='cuda'):
         self.score_model = score_model
-        self.dg_model = dg_model
+        self.classifier_model = classifier_model
         self.nbr_diff_steps = nbr_diff_steps
-        self.min_dis = min_dis
-        self.max_dis = max_dis
         self.img_size = img_size
         self.dg_weight_1order = dg_weight_1order
         self.dg_weight_2order = dg_weight_2order
@@ -32,7 +28,7 @@ class Diffusion:
         self.beta_max = 20.0
 
 
-    def sample(self, x_latent, boosting, time_min, time_max, sigma_min=0.002, sigma_max=80, rho=7, periode=5, period_weight=2,
+    def sample(self, x_latent, dg_model_list : list ,boosting, time_min, time_max, sigma_min=0.002, sigma_max=80, rho=7, periode=5, period_weight=2,
                S_churn=0, S_churn_manual = 4.0, S_noise_manual = 1.0, S_min=0, S_max=float("inf"), S_noise=1):
         '''
         Stochastic Differential Equations (SDE) solver to generate samples
@@ -97,7 +93,7 @@ class Diffusion:
             # DG correction 1st order
             dg_correction_hat = 0
             if self.dg_weight_1order != 0:
-                dg_correction, log_ratio = self.get_grad_log_ratio(x_hat, t_hat, time_min, time_max)
+                dg_correction, log_ratio = self.get_grad_log_ratio(x_hat, t_hat, time_min, time_max, dg_model_list)
                 if boosting and i % period_weight == 0:
                     dg_correction[log_ratio < 0.] *= 2
                 dg_correction_hat = self.dg_weight_1order * dg_correction / t_hat[:,None,None,None]
@@ -113,7 +109,7 @@ class Diffusion:
                 # DG correction 2nd order
                 if self.dg_weight_2order != 0:
                     # DG correction 2nd order
-                    dg_correction_next, log_ratio = self.get_grad_log_ratio(x_next, t_next, time_min, time_max)
+                    dg_correction_next, log_ratio = self.get_grad_log_ratio(x_next, t_next, time_min, time_max, dg_model_list)
                     dg_correction_hat_next = self.dg_weight_2order * (dg_correction_next / t_next)
 
                     # Heun step
@@ -125,13 +121,13 @@ class Diffusion:
 
         return x_next
     
-    def get_grad_log_ratio(self, input, sigma_t_wve, time_min, time_max):
+    def get_grad_log_ratio(self, input, sigma_t_wve, time_min, time_max, dg_model_list : list):
         # normalize time embedding to right format
         mean_vp_tau, tau = self.transform_unnormalized_wve_to_normalized_vp(sigma_t_wve)
         if tau.min() > time_max or tau.min() < time_min:
             print(f'tau.min()={tau.min()} is out of range [{time_min}, {time_max}]')
             return torch.zeros_like(input), 10000000. * torch.ones(input.shape[0], device=input.device)
-        if self.dg_model == None:
+        if dg_model_list[0] == None:
             raise ValueError(f'dg_model is None')
         
         with torch.enable_grad(): # why?
@@ -140,7 +136,11 @@ class Diffusion:
             tau = torch.ones(input_.shape[0], device=tau.device) * tau
 
             # compute gradient of log ratio
-            logits = self.dg_model(x_t, timesteps=tau, condition=None)
+            pretrained_feature = self.classifier_model(x_t, timesteps=tau, feature=True)
+            logits = 0
+            for dg_model in dg_model_list:
+                logits += dg_model(pretrained_feature, timesteps=tau, condition=None)
+            logits /= len(dg_model_list)
             prediction = torch.clip(logits, 1e-5, 1. - 1e-5)
             log_ratio = torch.log(prediction / (1. - prediction))
 
@@ -192,6 +192,7 @@ class Diffusion:
 
 
 # combine classifier_model and discriminator_model to one model, where only discriminator_model is trained
+# Not used anymore
 class Discriminator(nn.Module):
     def __init__(self, classifier, discriminator, enable_grad=True):
         super().__init__()
@@ -199,8 +200,8 @@ class Discriminator(nn.Module):
         self.discriminator = discriminator
         self.enable_grad = enable_grad
 
-    def forward(self, x, timesteps=None, condition=None):
+    def forward(self, x, timesteps=None):
         with torch.enable_grad() if self.enable_grad else torch.no_grad():
             adm_features = self.classifier(x, timesteps=timesteps, feature=True)
-            prediction = self.discriminator(adm_features, timesteps, sigmoid=True, condition=condition).view(-1)
+            prediction = self.discriminator(adm_features, timesteps, sigmoid=True, condition=None).view(-1)
         return prediction
