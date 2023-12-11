@@ -1,5 +1,7 @@
 .vscode
-*.pt
+/data
+/model/pretrained
+*/__pycache__
 /__pycache__
 *.pkl
 *.npz
@@ -7,3 +9,5 @@
 *.pyc
 *.png
 data/generated_fake_samples_cifar10_unconditional.zip
+*.pt
+

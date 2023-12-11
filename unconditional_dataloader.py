@@ -38,10 +38,10 @@ def get_dataloader(batch_size=params.batch_size):
     images = []
 
     # Loop through all files in the directory
-    for filename in tqdm(os.listdir(params.outdir_gen)):
+    for filename in tqdm(os.listdir(params.outdir_gen_path)):
         if filename.endswith(".png"):
             # Construct full file path
-            filepath = os.path.join(params.outdir_gen, filename)
+            filepath = os.path.join(params.outdir_gen_path, filename)
             # Open the image file
             with Image.open(filepath) as img:
                 # Convert to NumPy array and append to list
