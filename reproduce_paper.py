@@ -39,10 +39,6 @@ print("\nLoad pretrained classifier...")
 classifier_model = load_classifier(img_size=32, device=DEVICE)
 # print("\nClassifier:",classifier_model)
 
-# load pretrained or own discriminator
-print(f'\nLoad {params.discriminator_type} discriminator from {params.discriminator_mPath}...')
-discriminator_model = load_discriminator(dis_path=params.discriminator_mPath, model_type=params.discriminator_type, in_size=8, in_channels=512, device=DEVICE, eval=True)
-# print("\nDiscriminator:", discriminator_model)
 
 # test classifier/discriminator
 # Batch = 128
@@ -64,6 +60,11 @@ nbr_batches = params.nbr_samples // params.batch_size + 1
 ################################################################################################################
 ################################################################################################################
 if params.task_generate_samples:
+    # load pretrained or own discriminator
+    print(f'\nLoad {params.discriminator_type} discriminator from {params.discriminator_mPath}...')
+    discriminator_model = load_discriminator(dis_path=params.discriminator_mPath, model_type=params.discriminator_type, in_size=8, in_channels=512, device=DEVICE, eval=True)
+    # print("\nDiscriminator:", discriminator_model)
+
     print(f'\nGenerate samples with {params.discriminator_type} discriminator...')
     os.makedirs(params.outdir_gen_path, exist_ok=True)
     for i in tqdm(range(nbr_batches)):
@@ -96,20 +97,20 @@ if params.task_generate_samples_ensemble:
     os.makedirs(params.outdir_gen_path, exist_ok=True)
 
     # load ensemble dg model
-    ensemble_model = []
-    ensemble_model.append(load_discriminator(dis_path=params.discriminator_mPath_e0, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
-    ensemble_model.append(load_discriminator(dis_path=params.discriminator_mPath_e1, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
-    ensemble_model.append(load_discriminator(dis_path=params.discriminator_mPath_e2, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
-    ensemble_model.append(load_discriminator(dis_path=params.discriminator_mPath_e3, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
-    ensemble_model.append(load_discriminator(dis_path=params.discriminator_mPath_e4, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
-    ensemble_model.append(load_discriminator(dis_path=params.discriminator_mPath_e5, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
+    ensemble_model_list = []
+    ensemble_model_list.append(load_discriminator(dis_path=params.discriminator_mPath_e0, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
+    ensemble_model_list.append(load_discriminator(dis_path=params.discriminator_mPath_e1, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
+    ensemble_model_list.append(load_discriminator(dis_path=params.discriminator_mPath_e2, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
+    ensemble_model_list.append(load_discriminator(dis_path=params.discriminator_mPath_e3, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
+    ensemble_model_list.append(load_discriminator(dis_path=params.discriminator_mPath_e4, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
+    ensemble_model_list.append(load_discriminator(dis_path=params.discriminator_mPath_e5, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
 
     for i in tqdm(range(nbr_batches)):
         # sample from latent space (batch_size, 3, 32, 32)
         x_latent = torch.randn(params.batch_size, diffusion_model.img_channels, diffusion_model.img_resolution, diffusion_model.img_resolution, device=DEVICE)
 
         # generate samples images
-        images = diffusion.sample(x_latent, ensemble_model, params.boosting, params.time_min, params.time_max)
+        images = diffusion.sample(x_latent, ensemble_model_list, params.boosting, params.time_min, params.time_max)
 
         # save generated samples images
         images_np = (images * 127.5 + 128).clip(0, 255).to(torch.uint8).permute(0, 2, 3, 1).cpu().numpy()
@@ -129,6 +130,11 @@ if params.task_generate_samples_ensemble:
 ###############################################################################################################
 ###############################################################################################################
 if params.task_train_discriminator:
+    # load pretrained or own discriminator
+    print(f'\nLoad {params.discriminator_type} discriminator from {params.discriminator_mPath}...')
+    discriminator_model = load_discriminator(dis_path=params.discriminator_mPath, model_type=params.discriminator_type, in_size=8, in_channels=512, device=DEVICE, eval=True)
+    # print("\nDiscriminator:", discriminator_model)
+
     print("\nTrain discriminator...")
     
     # load data
@@ -144,7 +150,7 @@ if params.task_train_discriminator:
     loss_val_list = []
     accuracy_val_list = []       
     classifier_model.eval()
-    for epoch in tqdm(range(params.nbr_epochs)):
+    for epoch in tqdm(range(params.nbr_epochs+1)):
         accuracy_epoch = []
         loss_epoch = []
         discriminator_model.train()
@@ -220,7 +226,7 @@ if params.task_train_discriminator:
         accuracy_val_list.append(accuracy_val / len(val_dataloader))
 
         # save model, loss, accuracy
-        if epoch % 5 == 0 or epoch == params.nbr_epochs-1:
+        if epoch % 5 == 0 or epoch == params.nbr_epochs:
             torch.save(discriminator_model.state_dict(), os.path.join(params.outdir_discriminator, f'discriminator_{epoch}.pth'))
             np.save(os.path.join(params.outdir_eval, f'loss.npz'), loss_list)
             np.save(os.path.join(params.outdir_eval, f'accuracy.npz'), accuracy_list)
@@ -235,6 +241,11 @@ if params.task_train_discriminator:
 ##########################################################################################################
 ##########################################################################################################
 if params.task_train_ensemble:
+    # load pretrained or own discriminator
+    print(f'\nLoad {params.discriminator_type} discriminator from {params.discriminator_mPath}...')
+    discriminator_model = load_discriminator(dis_path=params.discriminator_mPath, model_type=params.discriminator_type, in_size=8, in_channels=512, device=DEVICE, eval=True)
+    # print("\nDiscriminator:", discriminator_model)
+
     print("\nTrain ensemble...")
     ensemble_dict = {}
     ensemble_dict['ensemble_0'] = {'nbr_epochs': params.nbr_epochs_e0, 'lr': params.lr_e0, 'weight_decay': params.weight_decay_e0, 'min_diff_time': params.min_diff_time_e0}
@@ -266,7 +277,7 @@ if params.task_train_ensemble:
         loss_val_list = []
         accuracy_val_list = []       
         classifier_model.eval()
-        for epoch in tqdm(range(ensemble_dict[e]['nbr_epochs'])):
+        for epoch in tqdm(range(ensemble_dict[e]['nbr_epochs']+1)):
             discriminator_model.train()
             loss_train = 0
             accuracy_train = 0
@@ -339,7 +350,7 @@ if params.task_train_ensemble:
             accuracy_val_list.append(accuracy_val / len(val_dataloader))
 
             # save model, loss, accuracy
-            if epoch % 5 == 0 or epoch == params.nbr_epochs-1:
+            if epoch % 5 == 0 or epoch == params.nbr_epochs:
                 torch.save(discriminator_model.state_dict(), os.path.join(params.outdir_discriminator, f'discriminator_{e}_{epoch}.pth'))
                 print(f"\nEpoch {epoch}: val loss={loss_val_list[-1]}, val accuracy={accuracy_val_list[-1]}, loss={loss_list[-1]}, accuracy={accuracy_list[-1]}")
             if epoch % 10 == 0 or epoch == params.nbr_epochs-1:
@@ -368,7 +379,7 @@ if params.task_train_ensemble:
 ######################################################################################################
 if params.task_eval:
     # Calculate FID for generated images after training
-    image_path = os.getcwd() + params.outdir_gen_path
+    image_path = os.getcwd() + params.eval_load_images_path
     ref_path = os.getcwd() + params.FID_stats_path
 
     print(f'\nLoading dataset reference statistics from "{ref_path}"...')
@@ -384,57 +395,62 @@ if params.task_eval:
     # Calculate precision and recall
     print("\nCalculate precision and recall...")
     # load ensemble dg model
-    ensemble_model = []
-    ensemble_model.append(load_discriminator(dis_path=params.discriminator_mPath_e0, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
-    ensemble_model.append(load_discriminator(dis_path=params.discriminator_mPath_e1, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
-    ensemble_model.append(load_discriminator(dis_path=params.discriminator_mPath_e2, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
-    ensemble_model.append(load_discriminator(dis_path=params.discriminator_mPath_e3, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
-    ensemble_model.append(load_discriminator(dis_path=params.discriminator_mPath_e4, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
-    ensemble_model.append(load_discriminator(dis_path=params.discriminator_mPath_e5, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
-
-    train_dataloader, val_dataloader, _ = get_dataloader(batch_size=params.batch_size)        
-    
-    # scale data [0, 255] to [-1,1]
-    scaler = lambda x: (x / 127.5) - 1
-    
+    ensemble_model_list = []
+    # ensemble_model_list.append(load_discriminator(dis_path=params.discriminator_mPath_e0, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
+    # ensemble_model_list.append(load_discriminator(dis_path=params.discriminator_mPath_e1, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
+    # ensemble_model_list.append(load_discriminator(dis_path=params.discriminator_mPath_e2, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
+    # ensemble_model_list.append(load_discriminator(dis_path=params.discriminator_mPath_e3, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
+    # ensemble_model_list.append(load_discriminator(dis_path=params.discriminator_mPath_e4, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
+    # ensemble_model_list.append(load_discriminator(dis_path=params.discriminator_mPath_e5, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
     precision = 0
     recall = 0
-    # for data in tqdm(val_dataloader):
-    for data in tqdm(train_dataloader):
-        # load generated samples
-        images, labels = data
-        images = images.to(DEVICE)
-        labels = labels.to(DEVICE)
 
-        # scale images
-        images = scaler(images)
+    if len(ensemble_model_list) > 0:    # case with DG
+        train_dataloader, val_dataloader, test_dataloader = get_dataloader(batch_size=params.batch_size)        
+       
+        scaler = lambda x: (x / 127.5) - 1        # scale data [0, 255] to [-1,1]
 
-        # sample time, diffuse data
-        t, _ = diffusion.get_diffusion_time(images.shape[0], images.device, t_min=params.min_diff_time, importance_sampling=params.importance_sampling)
-        mean, std = diffusion.marginal_prob(t)
-        z = torch.randn_like(images)
-        perturbed_inputs = mean[:, None, None, None] * images + std[:, None, None, None] * z
+        len_data = 0
+        for data in tqdm(test_dataloader):
+        # for data in tqdm(train_dataloader):
+            len_data += 1
+            # load generated samples
+            images, labels = data
+            images = images.to(DEVICE)
+            labels = labels.to(DEVICE)
 
-        # compute precision and recall
-        with torch.no_grad():
-            pretrained_feature = classifier_model(perturbed_inputs, timesteps=t, feature=True)
-            label_prediction = 0
-            for model in ensemble_model:
-                label_prediction += model(pretrained_feature, t, sigmoid=True).view(-1)
-            label_prediction /= len(ensemble_model)
+            # scale images
+            images = scaler(images)
 
-        assert label_prediction.shape == labels.shape
-        precision += precision_score(labels.cpu().numpy(), label_prediction.cpu().numpy() > 0.5)
-        recall += recall_score(labels.cpu().numpy(), label_prediction.cpu().numpy() > 0.5)
+            # sample time, diffuse data
+            t, _ = diffusion.get_diffusion_time(images.shape[0], images.device, t_min=params.min_diff_time, importance_sampling=params.importance_sampling)
+            mean, std = diffusion.marginal_prob(t)
+            z = torch.randn_like(images)
+            perturbed_inputs = mean[:, None, None, None] * images + std[:, None, None, None] * z
+
+            # compute precision and recall
+            with torch.no_grad():
+                pretrained_feature = classifier_model(perturbed_inputs, timesteps=t, feature=True)
+                label_prediction = 0
+                for model in ensemble_model_list:
+                    label_prediction += model(pretrained_feature, t, sigmoid=True).view(-1)
+                label_prediction /= len(ensemble_model_list)
+
+            assert label_prediction.shape == labels.shape
+            precision += precision_score(labels.cpu().numpy(), label_prediction.cpu().numpy() > 0.5)
+            recall += recall_score(labels.cpu().numpy(), label_prediction.cpu().numpy() > 0.5)
+            # print("precision", precision_score(labels.cpu().numpy(), label_prediction.cpu().numpy() > 0.5))
+            # print("recall", recall_score(labels.cpu().numpy(), label_prediction.cpu().numpy() > 0.5))
+
+        precision /= len_data
+        recall /= len_data
+
+        print(f'\nPrecision: {precision}')
+        print(f'Recall: {recall}')
+
     
-    precision /= nbr_batches
-    recall /= nbr_batches
-
     eval_metrics = (fid, precision, recall)
-
-    print(f'\nPrecision: {precision}')
-    print(f'Recall: {recall}')
+    print(f'\nEvaluation metrics: {eval_metrics}')
 
     # save evaluation metrics
     np.save(os.path.join(params.outdir_eval, f'eval_metrics'), eval_metrics)
-
