@@ -32,12 +32,24 @@ def calculate_inception_stats_npz(image_path, num_samples=50000, device=torch.de
     sigma = torch.zeros([feature_dim, feature_dim], dtype=torch.float64, device=device)
 
     files = glob(os.path.join(image_path, '*.npz'))
+    # in case we have paperWithDG (64, 32, 32, 3) --> take only every 64th image with 64 images (not 64 times the same image)
+    image_batch = np.load(files[0])["samples"]
+    img_len = len(image_batch.shape)
+    if img_len == 4:                # take only every 64 file in list
+        files_new = []
+        for i in range(0, len(files), 64):
+            files_new.append(files[i])
+        files = files_new
+        print(f'Cut number of files to {len(files)} for 64 batched images')
     random.shuffle(files)
     count = 0
 
     for file in files:
 
         images = np.load(file)["samples"]
+        if img_len == 3:                  # if we have no batch --> expand dims
+            images = np.expand_dims(images, axis=0)
+
         images = torch.tensor(images).permute(0, 3, 1, 2).to(device)
         features = detector_net(images, **detector_kwargs).to(torch.float64)
         if count + images.shape[0] > num_samples:
@@ -47,7 +59,8 @@ def calculate_inception_stats_npz(image_path, num_samples=50000, device=torch.de
         mu += features[:remaining_num_samples].sum(0)
         sigma += features[:remaining_num_samples].T @ features[:remaining_num_samples]
         count = count + remaining_num_samples
-        print(count)
+        if count % 1000 == 0 or img_len != 3:
+            print(count)
         if count >= num_samples:
             break
 

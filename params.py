@@ -13,23 +13,24 @@ task_eval = True
 diffusion_mPath = './model/pretrained/edm-cifar10-32x32-uncond-vp.pkl'
 classifier_mPath = './model/pretrained/32x32_classifier.pt'
 discriminator_mPath = './model/ensemble/discriminator_ensemble_0_55.pth'
-outdir_gen_path = './data/generated_samples_cifar10_paperWithoutDG'
+outdir_gen_path = './data/generated_samples_cifar10_ourDG'
 outdir_discriminator = './model/ensemble'
-outdir_eval = './evaluation/paperWithoutDG'
+outdir_eval = './evaluation/OurEnsemble'
 
 
 # eval_load_images_path = './data/generated_samples_cifar10_unconditional_paperWithoutDG'
 # FID_stats_path = '/evaluation/FID_stats_file/cifar10-32x32.npz'
-eval_load_images_path = '\data\generated_samples_cifar10_paperWithoutDG'                # for windows path
+eval_load_images_path = '\data\generated_samples_cifar10_ourEnsemble'                # for windows path
 FID_stats_path = '\evaluation\FID_stats_file\cifar10-32x32.npz'                         # for windows path
 
-# ensemble paths
-discriminator_mPath_e0 = './model/ensemble/discriminator_ensemble_0_55.pth'
-discriminator_mPath_e1 = './model/ensemble/discriminator_ensemble_1_35.pth'
-discriminator_mPath_e2 = './model/ensemble/discriminator_ensemble_2_35.pth'
-discriminator_mPath_e3 = './model/ensemble/discriminator_ensemble_3_35.pth'
-discriminator_mPath_e4 = './model/ensemble/discriminator_ensemble_4_35.pth'
-discriminator_mPath_e5 = './model/ensemble/discriminator_ensemble_5_195.pth'
+# ensemble paths/validation paths
+useAllDis = True
+discriminator_mPath_e0 = './model/OurEnsemble/discriminator_ensemble_0_55.pth'
+discriminator_mPath_e1 = './model/OurEnsemble/discriminator_ensemble_1_35.pth'
+discriminator_mPath_e2 = './model/OurEnsemble/discriminator_ensemble_2_35.pth'
+discriminator_mPath_e3 = './model/OurEnsemble/discriminator_ensemble_1_15.pth'
+discriminator_mPath_e4 = './model/OurEnsemble/discriminator_ensemble_4_35.pth'
+discriminator_mPath_e5 = './model/OurEnsemble/discriminator_ensemble_5_195.pth'
 
 ################################ DG diffusion ################################
 discriminator_type = 'pretrained'  # 'own' or 'pretrained'

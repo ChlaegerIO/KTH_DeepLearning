@@ -396,12 +396,13 @@ if params.task_eval:
     print("\nCalculate precision and recall...")
     # load ensemble dg model
     ensemble_model_list = []
-    # ensemble_model_list.append(load_discriminator(dis_path=params.discriminator_mPath_e0, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
-    # ensemble_model_list.append(load_discriminator(dis_path=params.discriminator_mPath_e1, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
-    # ensemble_model_list.append(load_discriminator(dis_path=params.discriminator_mPath_e2, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
-    # ensemble_model_list.append(load_discriminator(dis_path=params.discriminator_mPath_e3, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
-    # ensemble_model_list.append(load_discriminator(dis_path=params.discriminator_mPath_e4, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
-    # ensemble_model_list.append(load_discriminator(dis_path=params.discriminator_mPath_e5, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
+    ensemble_model_list.append(load_discriminator(dis_path=params.discriminator_mPath_e0, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
+    if params.useAllDis:
+        ensemble_model_list.append(load_discriminator(dis_path=params.discriminator_mPath_e1, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
+        ensemble_model_list.append(load_discriminator(dis_path=params.discriminator_mPath_e2, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
+        ensemble_model_list.append(load_discriminator(dis_path=params.discriminator_mPath_e3, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
+        ensemble_model_list.append(load_discriminator(dis_path=params.discriminator_mPath_e4, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
+        ensemble_model_list.append(load_discriminator(dis_path=params.discriminator_mPath_e5, model_type="pretrained", in_size=8, in_channels=512, device=DEVICE, eval=True))
     precision = 0
     recall = 0
 
