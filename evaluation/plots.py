@@ -6,14 +6,42 @@ import matplotlib.ticker as ticker
 PLOT_IMAGE_GRID = False
 PLOT_EVAL = False
 
-print(np.load("evaluation/paperWithDG/eval_metrics.npy"))
+# print(np.load("evaluation/paperWithoutDG/eval_metrics.npy"))
+
+# img_batch = np.load("data/generated_samples_cifar10_paperWithDG/000002.npz")["samples"]
+# images = []
+# for img in img_batch:
+#     images.append(img)
+# images = np.array(images)
+
+# margin=1 # pixels
+# spacing = 1/200 # pixels
+# dpi=100. # dots per inch
+
+# width = (400+180+2*margin+spacing)/dpi # inches
+# height= (400+180+2*margin+spacing)/dpi
+
+# left = spacing #axes ratio
+# bottom = spacing
+# wspace = spacing
+
+# fig, axes  = plt.subplots(8,8, figsize=(width,height), dpi=dpi)
+# fig.subplots_adjust(left=left, bottom=bottom, right=1.-left, top=1.-bottom, 
+#                     wspace=wspace, hspace=wspace)
+
+# for ax, im in zip(axes.flatten(),images):
+#     ax.axis('off')
+#     ax.imshow(im)
+
+# fig.savefig('evaluation/paperWithDG/sample_images.png', dpi=dpi, bbox_inches='tight')
+# plt.show()
 
 # plot 8x8 images
 if PLOT_IMAGE_GRID:
     images = []
-    for i in range(64):
-        images.append(np.load(f'data/generated_samples_cifar10_paperWithDG/0000{i}.npz')["samples"])
-        images = np.array(images)
+    for i in range(10,74):
+        images.append(np.load(f'data/generated_samples_cifar10_paperWithoutDG/0000{i}.npz')["samples"])
+    images = np.array(images)
     # images = np.load("data/generated_samples_cifar10_paperWithDG/000064.npz")["samples"]              # for batched immages
 
     margin=1 # pixels
@@ -35,10 +63,10 @@ if PLOT_IMAGE_GRID:
         ax.axis('off')
         ax.imshow(im)
 
-    plt.show()
 
     # save plot
-    fig.savefig('evaluation/OurEnsemble/sample_images.png', dpi=dpi, bbox_inches='tight')
+    fig.savefig('evaluation/paperWithoutDG/sample_images.png', dpi=dpi, bbox_inches='tight')
+    plt.show()
 
 
 # Define file groups for each subplot
